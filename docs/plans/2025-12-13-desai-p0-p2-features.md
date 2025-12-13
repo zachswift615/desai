@@ -1100,3 +1100,17 @@ git commit -m "feat: complete P0-P2 implementation with full MCP integration"
 - Task 2 can happen anytime but needs user involvement
 - Tasks 3-8 can be done in any order
 - Task 9 requires all others complete
+
+---
+
+## Known Issues to Verify After Implementation
+
+These issues were observed during Task 2 testing. Verify after completing all tasks:
+
+1. **Text element sizing** - Text elements have fixed width (200px) which truncates long text. Consider:
+   - Auto-sizing based on content
+   - Or allowing width/height in `desai_text_create` MCP tool
+
+2. **Layer element count display** - Layer 1 showed "271" elements when only 3-4 existed. Investigate the count logic in `LayersPanel.tsx`.
+
+If these persist after Task 9, create follow-up fixes.
