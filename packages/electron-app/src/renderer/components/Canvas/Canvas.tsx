@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { useProjectStore } from '../../store';
-import { CanvasElement } from './CanvasElement';
+import { CanvasElement, type ResizeHandle } from './CanvasElement';
 import { generateId } from '../../utils/id';
 import type { RectElement, EllipseElement, TextElement, LineElement, Element } from '@desai/shared';
 
@@ -9,6 +9,14 @@ interface DragState {
   dragStartPos: { x: number; y: number } | null;
   elementStartPos: { x: number; y: number } | null;
   draggedElementId: string | null;
+}
+
+interface ResizeState {
+  isResizing: boolean;
+  resizeStartPos: { x: number; y: number } | null;
+  elementStartBounds: { x: number; y: number; width: number; height: number } | null;
+  resizedElementId: string | null;
+  resizeHandle: ResizeHandle | null;
 }
 
 export function Canvas() {
@@ -31,6 +39,14 @@ export function Canvas() {
     draggedElementId: null,
   });
 
+  const [resizeState, setResizeState] = useState<ResizeState>({
+    isResizing: false,
+    resizeStartPos: null,
+    elementStartBounds: null,
+    resizedElementId: null,
+    resizeHandle: null,
+  });
+
   const handleDragStart = useCallback((e: React.MouseEvent, element: Element) => {
     if (activeTool !== 'select') return;
 
@@ -45,20 +61,110 @@ export function Canvas() {
     });
   }, [activeTool, pushHistory]);
 
+  const handleResizeStart = useCallback((e: React.MouseEvent, element: Element, handle: ResizeHandle) => {
+    if (activeTool !== 'select') return;
+
+    // Push history before resize starts
+    pushHistory();
+
+    setResizeState({
+      isResizing: true,
+      resizeStartPos: { x: e.clientX, y: e.clientY },
+      elementStartBounds: { x: element.x, y: element.y, width: element.width, height: element.height },
+      resizedElementId: element.id,
+      resizeHandle: handle,
+    });
+  }, [activeTool, pushHistory]);
+
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!dragState.isDragging || !dragState.dragStartPos || !dragState.elementStartPos || !dragState.draggedElementId) {
+    // Handle dragging
+    if (dragState.isDragging && dragState.dragStartPos && dragState.elementStartPos && dragState.draggedElementId) {
+      const deltaX = (e.clientX - dragState.dragStartPos.x) / viewport.zoom;
+      const deltaY = (e.clientY - dragState.dragStartPos.y) / viewport.zoom;
+
+      const newX = dragState.elementStartPos.x + deltaX;
+      const newY = dragState.elementStartPos.y + deltaY;
+
+      // Use no-history version during drag for performance
+      updateElementNoHistory(dragState.draggedElementId, { x: newX, y: newY });
       return;
     }
 
-    const deltaX = (e.clientX - dragState.dragStartPos.x) / viewport.zoom;
-    const deltaY = (e.clientY - dragState.dragStartPos.y) / viewport.zoom;
+    // Handle resizing
+    if (resizeState.isResizing && resizeState.resizeStartPos && resizeState.elementStartBounds && resizeState.resizedElementId && resizeState.resizeHandle) {
+      const deltaX = (e.clientX - resizeState.resizeStartPos.x) / viewport.zoom;
+      const deltaY = (e.clientY - resizeState.resizeStartPos.y) / viewport.zoom;
 
-    const newX = dragState.elementStartPos.x + deltaX;
-    const newY = dragState.elementStartPos.y + deltaY;
+      const MIN_SIZE = 10;
+      const { x, y, width, height } = resizeState.elementStartBounds;
+      const handle = resizeState.resizeHandle;
 
-    // Use no-history version during drag for performance
-    updateElementNoHistory(dragState.draggedElementId, { x: newX, y: newY });
-  }, [dragState, viewport.zoom, updateElementNoHistory]);
+      let newX = x;
+      let newY = y;
+      let newWidth = width;
+      let newHeight = height;
+
+      // Calculate new dimensions based on handle
+      switch (handle) {
+        case 'nw':
+          newX = x + deltaX;
+          newY = y + deltaY;
+          newWidth = width - deltaX;
+          newHeight = height - deltaY;
+          break;
+        case 'n':
+          newY = y + deltaY;
+          newHeight = height - deltaY;
+          break;
+        case 'ne':
+          newY = y + deltaY;
+          newWidth = width + deltaX;
+          newHeight = height - deltaY;
+          break;
+        case 'e':
+          newWidth = width + deltaX;
+          break;
+        case 'se':
+          newWidth = width + deltaX;
+          newHeight = height + deltaY;
+          break;
+        case 's':
+          newHeight = height + deltaY;
+          break;
+        case 'sw':
+          newX = x + deltaX;
+          newWidth = width - deltaX;
+          newHeight = height + deltaY;
+          break;
+        case 'w':
+          newX = x + deltaX;
+          newWidth = width - deltaX;
+          break;
+      }
+
+      // Enforce minimum size
+      if (newWidth < MIN_SIZE) {
+        if (handle.includes('w')) {
+          newX = x + width - MIN_SIZE;
+        }
+        newWidth = MIN_SIZE;
+      }
+      if (newHeight < MIN_SIZE) {
+        if (handle.includes('n')) {
+          newY = y + height - MIN_SIZE;
+        }
+        newHeight = MIN_SIZE;
+      }
+
+      // Use no-history version during resize for performance
+      updateElementNoHistory(resizeState.resizedElementId, {
+        x: newX,
+        y: newY,
+        width: newWidth,
+        height: newHeight,
+      });
+    }
+  }, [dragState, resizeState, viewport.zoom, updateElementNoHistory]);
 
   const handleMouseUp = useCallback(() => {
     if (dragState.isDragging) {
@@ -69,7 +175,16 @@ export function Canvas() {
         draggedElementId: null,
       });
     }
-  }, [dragState.isDragging]);
+    if (resizeState.isResizing) {
+      setResizeState({
+        isResizing: false,
+        resizeStartPos: null,
+        elementStartBounds: null,
+        resizedElementId: null,
+        resizeHandle: null,
+      });
+    }
+  }, [dragState.isDragging, resizeState.isResizing]);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (activeTool === 'select') {
@@ -204,6 +319,7 @@ export function Canvas() {
                   selected={selection.includes(element.id)}
                   onSelect={() => setSelection([element.id])}
                   onDragStart={handleDragStart}
+                  onResizeStart={handleResizeStart}
                 />
               ))}
             </React.Fragment>
