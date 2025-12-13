@@ -1,0 +1,14 @@
+{
+  "name": "desai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter electron-app dev",
+    "build": "pnpm --filter electron-app build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
