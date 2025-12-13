@@ -32,6 +32,7 @@ interface ProjectStore {
   // Element actions
   addElement: (layerId: string, element: Element) => void;
   updateElement: (elementId: string, updates: Partial<Element>) => void;
+  updateElementNoHistory: (elementId: string, updates: Partial<Element>) => void;
   deleteElement: (elementId: string) => void;
   duplicateElement: (elementId: string) => string | null;
 
@@ -225,6 +226,21 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   updateElement: (elementId, updates) => {
     const { project, pushHistory } = get();
     pushHistory();
+    set({
+      project: {
+        ...project,
+        layers: project.layers.map((layer) => ({
+          ...layer,
+          elements: layer.elements.map((el) =>
+            el.id === elementId ? { ...el, ...updates } : el
+          ),
+        })),
+      },
+    });
+  },
+
+  updateElementNoHistory: (elementId, updates) => {
+    const { project } = get();
     set({
       project: {
         ...project,

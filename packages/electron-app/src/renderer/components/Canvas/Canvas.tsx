@@ -1,8 +1,15 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { useProjectStore } from '../../store';
 import { CanvasElement } from './CanvasElement';
 import { generateId } from '../../utils/id';
-import type { RectElement, EllipseElement, TextElement, LineElement } from '@desai/shared';
+import type { RectElement, EllipseElement, TextElement, LineElement, Element } from '@desai/shared';
+
+interface DragState {
+  isDragging: boolean;
+  dragStartPos: { x: number; y: number } | null;
+  elementStartPos: { x: number; y: number } | null;
+  draggedElementId: string | null;
+}
 
 export function Canvas() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -12,7 +19,57 @@ export function Canvas() {
   const setSelection = useProjectStore((s) => s.setSelection);
   const clearSelection = useProjectStore((s) => s.clearSelection);
   const addElement = useProjectStore((s) => s.addElement);
+  const updateElement = useProjectStore((s) => s.updateElement);
+  const updateElementNoHistory = useProjectStore((s) => s.updateElementNoHistory);
+  const pushHistory = useProjectStore((s) => s.pushHistory);
   const viewport = useProjectStore((s) => s.viewport);
+
+  const [dragState, setDragState] = useState<DragState>({
+    isDragging: false,
+    dragStartPos: null,
+    elementStartPos: null,
+    draggedElementId: null,
+  });
+
+  const handleDragStart = useCallback((e: React.MouseEvent, element: Element) => {
+    if (activeTool !== 'select') return;
+
+    // Push history before drag starts
+    pushHistory();
+
+    setDragState({
+      isDragging: true,
+      dragStartPos: { x: e.clientX, y: e.clientY },
+      elementStartPos: { x: element.x, y: element.y },
+      draggedElementId: element.id,
+    });
+  }, [activeTool, pushHistory]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!dragState.isDragging || !dragState.dragStartPos || !dragState.elementStartPos || !dragState.draggedElementId) {
+      return;
+    }
+
+    const deltaX = (e.clientX - dragState.dragStartPos.x) / viewport.zoom;
+    const deltaY = (e.clientY - dragState.dragStartPos.y) / viewport.zoom;
+
+    const newX = dragState.elementStartPos.x + deltaX;
+    const newY = dragState.elementStartPos.y + deltaY;
+
+    // Use no-history version during drag for performance
+    updateElementNoHistory(dragState.draggedElementId, { x: newX, y: newY });
+  }, [dragState, viewport.zoom, updateElementNoHistory]);
+
+  const handleMouseUp = useCallback(() => {
+    if (dragState.isDragging) {
+      setDragState({
+        isDragging: false,
+        dragStartPos: null,
+        elementStartPos: null,
+        draggedElementId: null,
+      });
+    }
+  }, [dragState.isDragging]);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (activeTool === 'select') {
@@ -123,6 +180,9 @@ export function Canvas() {
       <div
         ref={canvasRef}
         onClick={handleCanvasClick}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
         className="relative shadow-2xl"
         style={{
           width: project.canvas.width,
@@ -130,6 +190,7 @@ export function Canvas() {
           backgroundColor: project.canvas.background,
           transform: `scale(${viewport.zoom})`,
           transformOrigin: 'center center',
+          userSelect: 'none',
         }}
       >
         {/* Render layers bottom to top */}
@@ -142,6 +203,7 @@ export function Canvas() {
                   element={element}
                   selected={selection.includes(element.id)}
                   onSelect={() => setSelection([element.id])}
+                  onDragStart={handleDragStart}
                 />
               ))}
             </React.Fragment>

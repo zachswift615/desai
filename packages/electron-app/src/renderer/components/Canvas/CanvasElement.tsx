@@ -5,9 +5,10 @@ interface CanvasElementProps {
   element: Element;
   selected: boolean;
   onSelect: () => void;
+  onDragStart: (e: React.MouseEvent, element: Element) => void;
 }
 
-export function CanvasElement({ element, selected, onSelect }: CanvasElementProps) {
+export function CanvasElement({ element, selected, onSelect, onDragStart }: CanvasElementProps) {
   const baseStyle: React.CSSProperties = {
     position: 'absolute',
     left: element.x,
@@ -16,21 +17,25 @@ export function CanvasElement({ element, selected, onSelect }: CanvasElementProp
     height: element.height,
     transform: `rotate(${element.rotation}deg)`,
     opacity: element.opacity / 100,
-    cursor: 'pointer',
+    cursor: selected ? 'move' : 'pointer',
     outline: selected ? '2px solid #3b82f6' : 'none',
     outlineOffset: '2px',
+    userSelect: 'none',
   };
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onSelect();
+    if (!selected) {
+      onSelect();
+    }
+    onDragStart(e, element);
   };
 
   switch (element.type) {
     case 'rect':
       return (
         <div
-          onClick={handleClick}
+          onMouseDown={handleMouseDown}
           style={{
             ...baseStyle,
             backgroundColor: element.fill,
@@ -43,7 +48,7 @@ export function CanvasElement({ element, selected, onSelect }: CanvasElementProp
     case 'ellipse':
       return (
         <div
-          onClick={handleClick}
+          onMouseDown={handleMouseDown}
           style={{
             ...baseStyle,
             backgroundColor: element.fill,
@@ -56,7 +61,7 @@ export function CanvasElement({ element, selected, onSelect }: CanvasElementProp
     case 'text':
       return (
         <div
-          onClick={handleClick}
+          onMouseDown={handleMouseDown}
           style={{
             ...baseStyle,
             color: element.fill,
@@ -76,7 +81,7 @@ export function CanvasElement({ element, selected, onSelect }: CanvasElementProp
     case 'image':
       return (
         <img
-          onClick={handleClick}
+          onMouseDown={handleMouseDown}
           src={element.src}
           alt=""
           style={{
@@ -95,7 +100,7 @@ export function CanvasElement({ element, selected, onSelect }: CanvasElementProp
     case 'line':
       return (
         <svg
-          onClick={handleClick}
+          onMouseDown={handleMouseDown}
           style={{
             ...baseStyle,
             overflow: 'visible',
