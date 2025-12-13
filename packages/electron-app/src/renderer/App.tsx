@@ -3,6 +3,7 @@ import { Layout } from './components/Layout';
 import { Toolbar } from './components/Toolbar';
 import { Canvas } from './components/Canvas';
 import { LayersPanel } from './components/LayersPanel';
+import { PropertiesPanel } from './components/PropertiesPanel';
 
 export default function App() {
   return (
@@ -10,7 +11,7 @@ export default function App() {
       toolbar={<Toolbar />}
       canvas={<Canvas />}
       layers={<LayersPanel />}
-      properties={<div className="p-2 text-xs text-gray-400">Properties</div>}
+      properties={<PropertiesPanel />}
     />
   );
 }
