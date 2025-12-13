@@ -42,9 +42,22 @@ export interface BaseElement {
   opacity: number;
 }
 
+export interface GradientStop {
+  color: string;
+  position: number; // 0-100
+}
+
+export interface LinearGradient {
+  type: 'linear';
+  angle: number; // degrees, 0 = left-to-right, 90 = top-to-bottom
+  stops: GradientStop[];
+}
+
+export type Fill = string | LinearGradient;
+
 export interface RectElement extends BaseElement {
   type: 'rect';
-  fill: string;
+  fill: Fill;
   stroke: string;
   strokeWidth: number;
   cornerRadius: number;
