@@ -103,6 +103,9 @@ function EditableText({ element, onComplete }: EditableTextProps) {
         outlineOffset: '2px',
         cursor: 'text',
         userSelect: 'text',
+        textShadow: element.shadow
+          ? `${element.shadow.x}px ${element.shadow.y}px ${element.shadow.blur}px ${element.shadow.color}`
+          : undefined,
       }}
     >
       {content}
@@ -249,6 +252,9 @@ export function CanvasElement({ element, selected, onSelect, onDragStart, onResi
             lineHeight: element.lineHeight,
             whiteSpace: 'pre-wrap',
             overflow: 'visible', // Allow resize handles to show outside bounds
+            textShadow: element.shadow
+              ? `${element.shadow.x}px ${element.shadow.y}px ${element.shadow.blur}px ${element.shadow.color}`
+              : undefined,
           }}
         >
           {element.content}
