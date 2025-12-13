@@ -33,7 +33,7 @@ export function Layout({ toolbar, canvas, layers, properties }: LayoutProps) {
         </div>
 
         {/* Right: Properties */}
-        <div className="w-64 bg-gray-800 border-l border-gray-700 overflow-auto">
+        <div className="w-64 shrink-0 bg-gray-800 border-l border-gray-700 overflow-auto">
           {properties}
         </div>
       </div>
