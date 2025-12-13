@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "desai": {
+      "command": "node",
+      "args": ["/path/to/desai/packages/mcp-server/dist/index.js"]
+    }
+  }
+}

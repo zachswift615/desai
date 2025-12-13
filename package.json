@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter electron-app dev",
-    "build": "pnpm --filter electron-app build",
+    "build": "pnpm -r build",
+    "mcp:start": "node packages/mcp-server/dist/index.js",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint"
   },
