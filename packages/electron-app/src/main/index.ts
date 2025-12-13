@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
+import { setupIpcServer, handleRendererResponse, stopIpcServer } from './ipc-server';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -20,11 +21,15 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+
+  // Setup IPC server for MCP communication
+  setupIpcServer(mainWindow);
 }
 
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
+  stopIpcServer();
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -41,4 +46,9 @@ ipcMain.handle('capture-screenshot', async () => {
   if (!mainWindow) return null;
   const image = await mainWindow.webContents.capturePage();
   return image.toDataURL();
+});
+
+// Handle MCP responses from renderer
+ipcMain.on('mcp-response', (_event, { requestId, response }) => {
+  handleRendererResponse(requestId, response);
 });
