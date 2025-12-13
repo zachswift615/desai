@@ -1,5 +1,18 @@
 import React, { useRef, useEffect, useState } from 'react';
-import type { Element } from '@desai/shared';
+import type { Element, Fill } from '@desai/shared';
+
+function fillToCSS(fill: Fill): string {
+  if (typeof fill === 'string') {
+    return fill;
+  }
+  if (fill.type === 'linear') {
+    const stops = fill.stops
+      .map(s => `${s.color} ${s.position}%`)
+      .join(', ');
+    return `linear-gradient(${fill.angle}deg, ${stops})`;
+  }
+  return '#ffffff';
+}
 
 interface CanvasElementProps {
   element: Element;
@@ -195,7 +208,7 @@ export function CanvasElement({ element, selected, onSelect, onDragStart, onResi
           onMouseDown={handleMouseDown}
           style={{
             ...baseStyle,
-            backgroundColor: element.fill,
+            background: fillToCSS(element.fill),
             border: element.strokeWidth ? `${element.strokeWidth}px solid ${element.stroke}` : 'none',
             borderRadius: element.cornerRadius,
           }}
