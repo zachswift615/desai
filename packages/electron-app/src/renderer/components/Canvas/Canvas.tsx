@@ -127,96 +127,6 @@ export function Canvas() {
     });
   }, [activeTool, pushHistory, isSpacePressed]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    // Handle dragging
-    if (dragState.isDragging && dragState.dragStartPos && dragState.elementStartPos && dragState.draggedElementId) {
-      const deltaX = (e.clientX - dragState.dragStartPos.x) / viewport.zoom;
-      const deltaY = (e.clientY - dragState.dragStartPos.y) / viewport.zoom;
-
-      const newX = dragState.elementStartPos.x + deltaX;
-      const newY = dragState.elementStartPos.y + deltaY;
-
-      // Use no-history version during drag for performance
-      updateElementNoHistory(dragState.draggedElementId, { x: newX, y: newY });
-      return;
-    }
-
-    // Handle resizing
-    if (resizeState.isResizing && resizeState.resizeStartPos && resizeState.elementStartBounds && resizeState.resizedElementId && resizeState.resizeHandle) {
-      const deltaX = (e.clientX - resizeState.resizeStartPos.x) / viewport.zoom;
-      const deltaY = (e.clientY - resizeState.resizeStartPos.y) / viewport.zoom;
-
-      const MIN_SIZE = 10;
-      const { x, y, width, height } = resizeState.elementStartBounds;
-      const handle = resizeState.resizeHandle;
-
-      let newX = x;
-      let newY = y;
-      let newWidth = width;
-      let newHeight = height;
-
-      // Calculate new dimensions based on handle
-      switch (handle) {
-        case 'nw':
-          newX = x + deltaX;
-          newY = y + deltaY;
-          newWidth = width - deltaX;
-          newHeight = height - deltaY;
-          break;
-        case 'n':
-          newY = y + deltaY;
-          newHeight = height - deltaY;
-          break;
-        case 'ne':
-          newY = y + deltaY;
-          newWidth = width + deltaX;
-          newHeight = height - deltaY;
-          break;
-        case 'e':
-          newWidth = width + deltaX;
-          break;
-        case 'se':
-          newWidth = width + deltaX;
-          newHeight = height + deltaY;
-          break;
-        case 's':
-          newHeight = height + deltaY;
-          break;
-        case 'sw':
-          newX = x + deltaX;
-          newWidth = width - deltaX;
-          newHeight = height + deltaY;
-          break;
-        case 'w':
-          newX = x + deltaX;
-          newWidth = width - deltaX;
-          break;
-      }
-
-      // Enforce minimum size
-      if (newWidth < MIN_SIZE) {
-        if (handle.includes('w')) {
-          newX = x + width - MIN_SIZE;
-        }
-        newWidth = MIN_SIZE;
-      }
-      if (newHeight < MIN_SIZE) {
-        if (handle.includes('n')) {
-          newY = y + height - MIN_SIZE;
-        }
-        newHeight = MIN_SIZE;
-      }
-
-      // Use no-history version during resize for performance
-      updateElementNoHistory(resizeState.resizedElementId, {
-        x: newX,
-        y: newY,
-        width: newWidth,
-        height: newHeight,
-      });
-    }
-  }, [dragState, resizeState, viewport.zoom, updateElementNoHistory]);
-
   const handleMouseUp = useCallback(() => {
     if (dragState.isDragging) {
       setDragState({
@@ -287,8 +197,94 @@ export function Canvas() {
     }
   }, [isSpacePressed, viewport.panX, viewport.panY]);
 
-  // Handle mouse move for panning
+  // Handle mouse move for panning and dragging (container level for reliable capture)
   const handleContainerMouseMove = useCallback((e: React.MouseEvent) => {
+    // Handle element dragging at container level for reliable mouse capture
+    if (dragState.isDragging && dragState.dragStartPos && dragState.elementStartPos && dragState.draggedElementId) {
+      const deltaX = (e.clientX - dragState.dragStartPos.x) / viewport.zoom;
+      const deltaY = (e.clientY - dragState.dragStartPos.y) / viewport.zoom;
+
+      const newX = dragState.elementStartPos.x + deltaX;
+      const newY = dragState.elementStartPos.y + deltaY;
+
+      updateElementNoHistory(dragState.draggedElementId, { x: newX, y: newY });
+      return;
+    }
+
+    // Handle element resizing at container level
+    if (resizeState.isResizing && resizeState.resizeStartPos && resizeState.elementStartBounds && resizeState.resizedElementId && resizeState.resizeHandle) {
+      const deltaX = (e.clientX - resizeState.resizeStartPos.x) / viewport.zoom;
+      const deltaY = (e.clientY - resizeState.resizeStartPos.y) / viewport.zoom;
+
+      const MIN_SIZE = 10;
+      const { x, y, width, height } = resizeState.elementStartBounds;
+      const handle = resizeState.resizeHandle;
+
+      let newX = x;
+      let newY = y;
+      let newWidth = width;
+      let newHeight = height;
+
+      switch (handle) {
+        case 'nw':
+          newX = x + deltaX;
+          newY = y + deltaY;
+          newWidth = width - deltaX;
+          newHeight = height - deltaY;
+          break;
+        case 'n':
+          newY = y + deltaY;
+          newHeight = height - deltaY;
+          break;
+        case 'ne':
+          newY = y + deltaY;
+          newWidth = width + deltaX;
+          newHeight = height - deltaY;
+          break;
+        case 'e':
+          newWidth = width + deltaX;
+          break;
+        case 'se':
+          newWidth = width + deltaX;
+          newHeight = height + deltaY;
+          break;
+        case 's':
+          newHeight = height + deltaY;
+          break;
+        case 'sw':
+          newX = x + deltaX;
+          newWidth = width - deltaX;
+          newHeight = height + deltaY;
+          break;
+        case 'w':
+          newX = x + deltaX;
+          newWidth = width - deltaX;
+          break;
+      }
+
+      if (newWidth < MIN_SIZE) {
+        if (handle.includes('w')) {
+          newX = x + width - MIN_SIZE;
+        }
+        newWidth = MIN_SIZE;
+      }
+      if (newHeight < MIN_SIZE) {
+        if (handle.includes('n')) {
+          newY = y + height - MIN_SIZE;
+        }
+        newHeight = MIN_SIZE;
+      }
+
+      updateElementNoHistory(resizeState.resizedElementId, {
+        x: newX,
+        y: newY,
+        width: newWidth,
+        height: newHeight,
+      });
+      return;
+    }
+
+    // Handle panning
     if (panState.isPanning && panState.panStartPos && panState.viewportStartPan) {
       const deltaX = e.clientX - panState.panStartPos.x;
       const deltaY = e.clientY - panState.panStartPos.y;
@@ -298,7 +294,7 @@ export function Canvas() {
         panY: panState.viewportStartPan.panY + deltaY,
       });
     }
-  }, [panState, setViewport]);
+  }, [dragState, resizeState, panState, viewport.zoom, updateElementNoHistory, setViewport]);
 
   const handleTextDoubleClick = useCallback((elementId: string) => {
     setEditingText(elementId);
@@ -388,7 +384,7 @@ export function Canvas() {
           fontSize: 24,
           fontFamily: 'system-ui',
           fontWeight: 'normal',
-          fill: '#ffffff',
+          fill: '#000000',
           align: 'left',
           lineHeight: 1.2,
         };
@@ -445,7 +441,6 @@ export function Canvas() {
       <div
         ref={canvasRef}
         onClick={handleCanvasClick}
-        onMouseMove={handleMouseMove}
         className="relative shadow-2xl"
         style={{
           width: project.canvas.width,

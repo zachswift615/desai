@@ -128,7 +128,7 @@ export function useMcpHandler() {
               fontSize: message.payload.fontSize ?? 24,
               fontFamily: 'system-ui',
               fontWeight: 'normal',
-              fill: message.payload.fill ?? '#ffffff',
+              fill: message.payload.fill ?? '#000000',
               align: 'left',
               lineHeight: 1.2,
             };

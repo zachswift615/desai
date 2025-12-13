@@ -188,7 +188,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             content: { type: 'string', description: 'Text content' },
             fontSize: { type: 'number', description: 'Font size in pixels', default: 24 },
             fontFamily: { type: 'string', description: 'Font family', default: 'system-ui' },
-            fill: { type: 'string', description: 'Text color (hex)', default: '#ffffff' },
+            fill: { type: 'string', description: 'Text color (hex)', default: '#000000' },
             align: { type: 'string', enum: ['left', 'center', 'right'], default: 'left' },
           },
           required: ['x', 'y', 'content'],

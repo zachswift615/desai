@@ -13,8 +13,13 @@ export function PropertyInput({
   type = 'text',
   onChange,
 }: PropertyInputProps) {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Prevent canvas from receiving this event and clearing selection
+    e.stopPropagation();
+  };
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" onMouseDown={handleMouseDown}>
       <label className="text-xs text-gray-400 w-16">{label}</label>
       <input
         type={type}

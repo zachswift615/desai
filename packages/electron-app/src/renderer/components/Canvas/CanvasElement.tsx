@@ -65,7 +65,8 @@ function EditableText({ element, onComplete }: EditableTextProps) {
 
   const handleBlur = () => {
     if (divRef.current) {
-      onComplete(divRef.current.textContent || '');
+      // Use innerText to preserve line breaks
+      onComplete(divRef.current.innerText || '');
     }
   };
 
@@ -73,7 +74,7 @@ function EditableText({ element, onComplete }: EditableTextProps) {
     if (e.key === 'Escape') {
       e.preventDefault();
       if (divRef.current) {
-        onComplete(divRef.current.textContent || '');
+        onComplete(divRef.current.innerText || '');
       }
     }
   };
@@ -188,6 +189,7 @@ export function CanvasElement({ element, selected, onSelect, onDragStart, onResi
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault(); // Prevent native text selection during drag
     if (!selected) {
       onSelect();
     }
@@ -246,7 +248,7 @@ export function CanvasElement({ element, selected, onSelect, onDragStart, onResi
             textAlign: element.align,
             lineHeight: element.lineHeight,
             whiteSpace: 'pre-wrap',
-            overflow: 'hidden',
+            overflow: 'visible', // Allow resize handles to show outside bounds
           }}
         >
           {element.content}

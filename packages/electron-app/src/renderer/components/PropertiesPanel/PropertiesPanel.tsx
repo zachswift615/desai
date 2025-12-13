@@ -32,8 +32,13 @@ export function PropertiesPanel() {
     updateElement(selectedElement!.id, updates);
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Prevent canvas from receiving events and clearing selection
+    e.stopPropagation();
+  };
+
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4" onMouseDown={handleMouseDown}>
       <div className="text-sm font-medium capitalize">
         {selectedElement.type}
       </div>
