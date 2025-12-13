@@ -39,6 +39,8 @@ export function Canvas() {
   const pushHistory = useProjectStore((s) => s.pushHistory);
   const viewport = useProjectStore((s) => s.viewport);
   const setViewport = useProjectStore((s) => s.setViewport);
+  const editingTextId = useProjectStore((s) => s.editingTextId);
+  const setEditingText = useProjectStore((s) => s.setEditingText);
 
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
@@ -63,12 +65,16 @@ export function Canvas() {
 
   const [isSpacePressed, setIsSpacePressed] = useState(false);
 
-  // Handle keyboard events for space key
+  // Handle keyboard events for space key and escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !isSpacePressed) {
         e.preventDefault();
         setIsSpacePressed(true);
+      }
+      if (e.code === 'Escape' && editingTextId) {
+        e.preventDefault();
+        setEditingText(null);
       }
     };
 
@@ -86,7 +92,7 @@ export function Canvas() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [isSpacePressed]);
+  }, [isSpacePressed, editingTextId, setEditingText]);
 
   const handleDragStart = useCallback((e: React.MouseEvent, element: Element) => {
     if (activeTool !== 'select') return;
@@ -294,9 +300,24 @@ export function Canvas() {
     }
   }, [panState, setViewport]);
 
+  const handleTextDoubleClick = useCallback((elementId: string) => {
+    setEditingText(elementId);
+  }, [setEditingText]);
+
+  const handleEditComplete = useCallback((elementId: string, content: string) => {
+    updateElement(elementId, { content });
+    setEditingText(null);
+  }, [updateElement, setEditingText]);
+
   const handleCanvasClick = (e: React.MouseEvent) => {
     // Don't handle click if we were panning
     if (panState.isPanning) return;
+
+    // Exit edit mode if clicking on canvas
+    if (editingTextId) {
+      setEditingText(null);
+      return;
+    }
 
     if (activeTool === 'select') {
       clearSelection();
@@ -447,6 +468,9 @@ export function Canvas() {
                   onSelect={() => setSelection([element.id])}
                   onDragStart={handleDragStart}
                   onResizeStart={handleResizeStart}
+                  isEditing={editingTextId === element.id}
+                  onDoubleClick={element.type === 'text' ? () => handleTextDoubleClick(element.id) : undefined}
+                  onEditComplete={element.type === 'text' ? (content) => handleEditComplete(element.id, content) : undefined}
                 />
               ))}
             </React.Fragment>

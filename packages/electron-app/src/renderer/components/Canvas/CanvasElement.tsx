@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import type { Element } from '@desai/shared';
 
 interface CanvasElementProps {
@@ -7,6 +7,9 @@ interface CanvasElementProps {
   onSelect: () => void;
   onDragStart: (e: React.MouseEvent, element: Element) => void;
   onResizeStart?: (e: React.MouseEvent, element: Element, handle: ResizeHandle) => void;
+  isEditing?: boolean;
+  onDoubleClick?: () => void;
+  onEditComplete?: (content: string) => void;
 }
 
 export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
@@ -24,6 +27,74 @@ const HANDLE_CURSORS: Record<ResizeHandle, string> = {
   sw: 'nesw-resize',
   w: 'ew-resize',
 };
+
+interface EditableTextProps {
+  element: Element & { type: 'text' };
+  onComplete: (content: string) => void;
+}
+
+function EditableText({ element, onComplete }: EditableTextProps) {
+  const [content, setContent] = useState(element.content);
+  const divRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (divRef.current) {
+      divRef.current.focus();
+      // Place cursor at end
+      const range = document.createRange();
+      const sel = window.getSelection();
+      range.selectNodeContents(divRef.current);
+      range.collapse(false);
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+  }, []);
+
+  const handleBlur = () => {
+    if (divRef.current) {
+      onComplete(divRef.current.textContent || '');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (divRef.current) {
+        onComplete(divRef.current.textContent || '');
+      }
+    }
+  };
+
+  return (
+    <div
+      ref={divRef}
+      contentEditable
+      suppressContentEditableWarning
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      style={{
+        position: 'absolute',
+        left: element.x,
+        top: element.y,
+        width: element.width,
+        height: element.height,
+        color: element.fill,
+        fontSize: element.fontSize,
+        fontFamily: element.fontFamily,
+        fontWeight: element.fontWeight,
+        textAlign: element.align,
+        lineHeight: element.lineHeight,
+        whiteSpace: 'pre-wrap',
+        outline: '2px solid #3b82f6',
+        outlineOffset: '2px',
+        cursor: 'text',
+        userSelect: 'text',
+      }}
+    >
+      {content}
+    </div>
+  );
+}
 
 function ResizeHandles({
   element,
@@ -82,7 +153,12 @@ function ResizeHandles({
   );
 }
 
-export function CanvasElement({ element, selected, onSelect, onDragStart, onResizeStart }: CanvasElementProps) {
+export function CanvasElement({ element, selected, onSelect, onDragStart, onResizeStart, isEditing, onDoubleClick, onEditComplete }: CanvasElementProps) {
+  // If editing, render the editable version
+  if (isEditing && element.type === 'text' && onEditComplete) {
+    return <EditableText element={element} onComplete={onEditComplete} />;
+  }
+
   const baseStyle: React.CSSProperties = {
     position: 'absolute',
     left: element.x,
@@ -103,6 +179,13 @@ export function CanvasElement({ element, selected, onSelect, onDragStart, onResi
       onSelect();
     }
     onDragStart(e, element);
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDoubleClick) {
+      onDoubleClick();
+    }
   };
 
   switch (element.type) {
@@ -140,6 +223,7 @@ export function CanvasElement({ element, selected, onSelect, onDragStart, onResi
       return (
         <div
           onMouseDown={handleMouseDown}
+          onDoubleClick={handleDoubleClick}
           style={{
             ...baseStyle,
             color: element.fill,

@@ -15,6 +15,7 @@ interface ProjectStore {
   viewport: Viewport;
   history: { past: DesaiProject[]; future: DesaiProject[] };
   activeTool: string;
+  editingTextId: string | null;
 
   // Canvas actions
   createCanvas: (width: number, height: number, background: string) => void;
@@ -45,6 +46,9 @@ interface ProjectStore {
 
   // Tool
   setActiveTool: (tool: string) => void;
+
+  // Text editing
+  setEditingText: (id: string | null) => void;
 
   // History
   undo: () => void;
@@ -78,6 +82,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   viewport: { zoom: 1, panX: 0, panY: 0 },
   history: { past: [], future: [] },
   activeTool: 'select',
+  editingTextId: null,
 
   createCanvas: (width, height, background) => {
     const { pushHistory } = get();
@@ -305,6 +310,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set((state) => ({ viewport: { ...state.viewport, ...viewport } })),
 
   setActiveTool: (tool) => set({ activeTool: tool }),
+
+  setEditingText: (id) => set({ editingTextId: id }),
 
   pushHistory: () => {
     const { project, history } = get();
