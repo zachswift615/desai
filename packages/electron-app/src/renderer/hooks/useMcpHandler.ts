@@ -120,17 +120,18 @@ export function useMcpHandler() {
               type: 'text',
               x: message.payload.x ?? 0,
               y: message.payload.y ?? 0,
-              width: 200,
-              height: 50,
+              width: message.payload.width ?? 400,
+              height: message.payload.height ?? 100,
               rotation: 0,
               opacity: 100,
               content: message.payload.content ?? 'Text',
               fontSize: message.payload.fontSize ?? 24,
-              fontFamily: 'system-ui',
-              fontWeight: 'normal',
+              fontFamily: message.payload.fontFamily ?? 'system-ui',
+              fontWeight: message.payload.fontWeight ?? 'normal',
               fill: message.payload.fill ?? '#000000',
-              align: 'left',
+              align: message.payload.align ?? 'left',
               lineHeight: 1.2,
+              shadow: message.payload.shadow,
             };
             addElement(activeLayer.id, text);
             response = { success: true, data: { elementId: text.id } };
