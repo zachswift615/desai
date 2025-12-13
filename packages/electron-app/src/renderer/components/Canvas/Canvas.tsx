@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useProjectStore } from '../../store';
 import { CanvasElement, type ResizeHandle } from './CanvasElement';
 import { generateId } from '../../utils/id';
@@ -19,8 +19,15 @@ interface ResizeState {
   resizeHandle: ResizeHandle | null;
 }
 
+interface PanState {
+  isPanning: boolean;
+  panStartPos: { x: number; y: number } | null;
+  viewportStartPan: { panX: number; panY: number } | null;
+}
+
 export function Canvas() {
   const canvasRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const project = useProjectStore((s) => s.project);
   const selection = useProjectStore((s) => s.selection);
   const activeTool = useProjectStore((s) => s.activeTool);
@@ -31,6 +38,7 @@ export function Canvas() {
   const updateElementNoHistory = useProjectStore((s) => s.updateElementNoHistory);
   const pushHistory = useProjectStore((s) => s.pushHistory);
   const viewport = useProjectStore((s) => s.viewport);
+  const setViewport = useProjectStore((s) => s.setViewport);
 
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
@@ -47,8 +55,43 @@ export function Canvas() {
     resizeHandle: null,
   });
 
+  const [panState, setPanState] = useState<PanState>({
+    isPanning: false,
+    panStartPos: null,
+    viewportStartPan: null,
+  });
+
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+
+  // Handle keyboard events for space key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !isSpacePressed) {
+        e.preventDefault();
+        setIsSpacePressed(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsSpacePressed(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isSpacePressed]);
+
   const handleDragStart = useCallback((e: React.MouseEvent, element: Element) => {
     if (activeTool !== 'select') return;
+    // Don't start dragging if space is pressed (panning mode)
+    if (isSpacePressed) return;
 
     // Push history before drag starts
     pushHistory();
@@ -59,10 +102,12 @@ export function Canvas() {
       elementStartPos: { x: element.x, y: element.y },
       draggedElementId: element.id,
     });
-  }, [activeTool, pushHistory]);
+  }, [activeTool, pushHistory, isSpacePressed]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent, element: Element, handle: ResizeHandle) => {
     if (activeTool !== 'select') return;
+    // Don't start resizing if space is pressed (panning mode)
+    if (isSpacePressed) return;
 
     // Push history before resize starts
     pushHistory();
@@ -74,7 +119,7 @@ export function Canvas() {
       resizedElementId: element.id,
       resizeHandle: handle,
     });
-  }, [activeTool, pushHistory]);
+  }, [activeTool, pushHistory, isSpacePressed]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     // Handle dragging
@@ -184,19 +229,88 @@ export function Canvas() {
         resizeHandle: null,
       });
     }
-  }, [dragState.isDragging, resizeState.isResizing]);
+    if (panState.isPanning) {
+      setPanState({
+        isPanning: false,
+        panStartPos: null,
+        viewportStartPan: null,
+      });
+    }
+  }, [dragState.isDragging, resizeState.isResizing, panState.isPanning]);
+
+  // Handle mouse wheel for zoom
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    if (!containerRect) return;
+
+    // Calculate mouse position relative to container
+    const mouseX = e.clientX - containerRect.left;
+    const mouseY = e.clientY - containerRect.top;
+
+    // Zoom factor: scroll up = zoom in, scroll down = zoom out
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    const oldZoom = viewport.zoom;
+    let newZoom = oldZoom * zoomFactor;
+
+    // Clamp zoom between 0.1 and 5
+    newZoom = Math.max(0.1, Math.min(5, newZoom));
+
+    // Calculate world position of mouse before zoom
+    const worldX = (mouseX - viewport.panX) / oldZoom;
+    const worldY = (mouseY - viewport.panY) / oldZoom;
+
+    // Adjust pan so world position stays under mouse after zoom
+    const newPanX = mouseX - worldX * newZoom;
+    const newPanY = mouseY - worldY * newZoom;
+
+    setViewport({ zoom: newZoom, panX: newPanX, panY: newPanY });
+  }, [viewport, setViewport]);
+
+  // Handle mouse down for panning
+  const handleContainerMouseDown = useCallback((e: React.MouseEvent) => {
+    // Middle mouse button or Space + left mouse button
+    if (e.button === 1 || (e.button === 0 && isSpacePressed)) {
+      e.preventDefault();
+      setPanState({
+        isPanning: true,
+        panStartPos: { x: e.clientX, y: e.clientY },
+        viewportStartPan: { panX: viewport.panX, panY: viewport.panY },
+      });
+    }
+  }, [isSpacePressed, viewport.panX, viewport.panY]);
+
+  // Handle mouse move for panning
+  const handleContainerMouseMove = useCallback((e: React.MouseEvent) => {
+    if (panState.isPanning && panState.panStartPos && panState.viewportStartPan) {
+      const deltaX = e.clientX - panState.panStartPos.x;
+      const deltaY = e.clientY - panState.panStartPos.y;
+
+      setViewport({
+        panX: panState.viewportStartPan.panX + deltaX,
+        panY: panState.viewportStartPan.panY + deltaY,
+      });
+    }
+  }, [panState, setViewport]);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
+    // Don't handle click if we were panning
+    if (panState.isPanning) return;
+
     if (activeTool === 'select') {
       clearSelection();
       return;
     }
 
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    if (!containerRect) return;
 
-    const x = (e.clientX - rect.left) / viewport.zoom;
-    const y = (e.clientY - rect.top) / viewport.zoom;
+    // Convert screen coordinates to canvas world coordinates
+    const screenX = e.clientX - containerRect.left;
+    const screenY = e.clientY - containerRect.top;
+    const x = (screenX - viewport.panX) / viewport.zoom;
+    const y = (screenY - viewport.panY) / viewport.zoom;
 
     const activeLayer = project.layers.find((l) => !l.locked);
     if (!activeLayer) return;
@@ -290,21 +404,34 @@ export function Canvas() {
     }
   };
 
+  const cursorStyle = panState.isPanning
+    ? 'grabbing'
+    : isSpacePressed
+    ? 'grab'
+    : 'default';
+
   return (
-    <div className="h-full w-full overflow-auto bg-gray-950 flex items-center justify-center p-8">
+    <div
+      ref={containerRef}
+      className="h-full w-full overflow-hidden bg-gray-950 flex items-center justify-center p-8"
+      onWheel={handleWheel}
+      onMouseDown={handleContainerMouseDown}
+      onMouseMove={handleContainerMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      style={{ cursor: cursorStyle }}
+    >
       <div
         ref={canvasRef}
         onClick={handleCanvasClick}
         onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
         className="relative shadow-2xl"
         style={{
           width: project.canvas.width,
           height: project.canvas.height,
           backgroundColor: project.canvas.background,
-          transform: `scale(${viewport.zoom})`,
-          transformOrigin: 'center center',
+          transform: `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`,
+          transformOrigin: '0 0',
           userSelect: 'none',
         }}
       >
