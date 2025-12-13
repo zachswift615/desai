@@ -1,7 +1,9 @@
-import ipc from 'node-ipc';
+import IPC from 'node-ipc';
 import { BrowserWindow } from 'electron';
 import type { IpcMessage, IpcResponse } from '@desai/shared';
 
+// node-ipc uses default export with a class instance
+const ipc = new (IPC as any).IPC();
 ipc.config.id = 'desai-app';
 ipc.config.retry = 1500;
 ipc.config.silent = true;
