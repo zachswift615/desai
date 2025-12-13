@@ -134,16 +134,18 @@ export function Canvas() {
       >
         {/* Render layers bottom to top */}
         {[...project.layers].reverse().map((layer) =>
-          layer.visible
-            ? layer.elements.map((element) => (
+          layer.visible ? (
+            <React.Fragment key={layer.id}>
+              {layer.elements.map((element) => (
                 <CanvasElement
                   key={element.id}
                   element={element}
                   selected={selection.includes(element.id)}
                   onSelect={() => setSelection([element.id])}
                 />
-              ))
-            : null
+              ))}
+            </React.Fragment>
+          ) : null
         )}
       </div>
     </div>
