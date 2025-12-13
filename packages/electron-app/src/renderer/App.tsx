@@ -5,9 +5,11 @@ import { Canvas } from './components/Canvas';
 import { LayersPanel } from './components/LayersPanel';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { useMcpHandler } from './hooks/useMcpHandler';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 export default function App() {
   useMcpHandler();
+  useKeyboardShortcuts();
 
   return (
     <Layout
