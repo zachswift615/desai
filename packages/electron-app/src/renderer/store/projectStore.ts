@@ -79,6 +79,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   activeTool: 'select',
 
   createCanvas: (width, height, background) => {
+    const { pushHistory } = get();
+    pushHistory();
     set({
       project: {
         id: generateId(),
@@ -169,7 +171,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   },
 
   setLayerVisibility: (layerId, visible) => {
-    const { project } = get();
+    const { project, pushHistory } = get();
+    pushHistory();
     set({
       project: {
         ...project,
@@ -194,7 +197,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   },
 
   setLayerLock: (layerId, locked) => {
-    const { project } = get();
+    const { project, pushHistory } = get();
+    pushHistory();
     set({
       project: {
         ...project,
@@ -290,7 +294,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const { project, history } = get();
     set({
       history: {
-        past: [...history.past.slice(-49), project],
+        past: [...history.past.slice(-49), structuredClone(project)],
         future: [],
       },
     });
