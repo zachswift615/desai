@@ -41,8 +41,8 @@ export function useMcpHandler() {
             break;
 
           case 'canvas:screenshot':
-            const screenshot = await window.electronAPI.captureScreenshot();
-            response = { success: true, data: { image: screenshot } };
+            const screenshotPath = await window.electronAPI.captureScreenshot();
+            response = { success: true, data: { path: screenshotPath } };
             break;
 
           case 'canvas:clear':

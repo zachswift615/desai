@@ -1,5 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
+import fs from 'fs';
+import os from 'os';
 import { setupIpcServer, handleRendererResponse, stopIpcServer } from './ipc-server';
 
 let mainWindow: BrowserWindow | null = null;
@@ -41,11 +43,23 @@ app.on('activate', () => {
   }
 });
 
-// IPC handler for screenshots
+// IPC handler for screenshots - saves to temp file to avoid context bloat
 ipcMain.handle('capture-screenshot', async () => {
   if (!mainWindow) return null;
   const image = await mainWindow.webContents.capturePage();
-  return image.toDataURL();
+
+  // Save to temp file instead of returning base64 (saves ~25k tokens)
+  const tempDir = path.join(os.tmpdir(), 'desai-screenshots');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+
+  const timestamp = Date.now();
+  const filePath = path.join(tempDir, `screenshot-${timestamp}.png`);
+  const pngBuffer = image.toPNG();
+  fs.writeFileSync(filePath, pngBuffer);
+
+  return filePath;
 });
 
 // Handle MCP responses from renderer

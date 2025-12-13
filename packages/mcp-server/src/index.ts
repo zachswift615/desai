@@ -45,7 +45,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'desai_canvas_screenshot',
-        description: 'Capture a screenshot of the current canvas as base64 PNG',
+        description: 'Capture a screenshot of the current canvas. Returns a file path to the PNG image.',
         inputSchema: { type: 'object', properties: {} },
       },
       {
