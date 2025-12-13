@@ -80,6 +80,13 @@ export interface LineElement extends BaseElement {
   strokeWidth: number;
 }
 
+export interface TextShadow {
+  x: number;
+  y: number;
+  blur: number;
+  color: string;
+}
+
 export interface TextElement extends BaseElement {
   type: 'text';
   content: string;
@@ -89,6 +96,7 @@ export interface TextElement extends BaseElement {
   fill: string;
   align: 'left' | 'center' | 'right';
   lineHeight: number;
+  shadow?: TextShadow;
 }
 
 export interface ImageElement extends BaseElement {
