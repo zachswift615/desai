@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import ipc from 'node-ipc';
 import type { IpcMessage, IpcResponse } from '@desai/shared';
 
@@ -54,7 +55,7 @@ export function sendCommand(message: IpcMessage): Promise<IpcResponse> {
       return;
     }
 
-    const requestId = Math.random().toString(36).substring(7);
+    const requestId = randomUUID();
     pendingRequests.set(requestId, { resolve, reject });
 
     ipc.of['desai-app'].emit('command', { requestId, message });
