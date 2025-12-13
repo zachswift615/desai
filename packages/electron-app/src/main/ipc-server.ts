@@ -18,8 +18,8 @@ export function setupIpcServer(window: BrowserWindow) {
     ipc.server.on('command', (data: { requestId: string; message: IpcMessage }, socket) => {
       console.log('Received command:', data.message.type);
 
-      // Forward to renderer
-      if (mainWindow) {
+      // Forward to renderer - check if window is still valid
+      if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('mcp-command', {
           requestId: data.requestId,
           message: data.message,

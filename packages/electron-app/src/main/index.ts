@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -60,6 +60,42 @@ ipcMain.handle('capture-screenshot', async () => {
   fs.writeFileSync(filePath, pngBuffer);
 
   return filePath;
+});
+
+// IPC handler for image selection
+ipcMain.handle('select-image', async () => {
+  if (!mainWindow) return null;
+
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select Image',
+    filters: [
+      {
+        name: 'Images',
+        extensions: ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'],
+      },
+    ],
+    properties: ['openFile'],
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  const filePath = result.filePaths[0];
+  const imageBuffer = fs.readFileSync(filePath);
+  const ext = path.extname(filePath).toLowerCase().slice(1);
+
+  // Convert to base64 data URL
+  const mimeType = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+  const base64 = imageBuffer.toString('base64');
+  const dataUrl = `data:${mimeType};base64,${base64}`;
+
+  // For non-SVG images, we'll need to get dimensions in the renderer
+  // Return the data URL and let the renderer handle dimension detection
+  return {
+    dataUrl,
+    fileName: path.basename(filePath),
+  };
 });
 
 // Handle MCP responses from renderer

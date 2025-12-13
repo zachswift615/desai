@@ -7,6 +7,7 @@ declare global {
   interface Window {
     electronAPI: {
       captureScreenshot: () => Promise<string>;
+      selectImage: () => Promise<{ dataUrl: string; fileName: string } | null>;
       onMcpCommand: (callback: (data: { requestId: string; message: IpcMessage }) => void) => void;
       sendMcpResponse: (requestId: string, response: IpcResponse) => void;
     };
