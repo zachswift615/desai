@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useProjectStore } from '../store';
 import { generateId } from '../utils/id';
-import type { IpcMessage, IpcResponse, RectElement, TextElement } from '@desai/shared';
+import type { IpcMessage, IpcResponse, RectElement, TextElement, EllipseElement } from '@desai/shared';
 
 declare global {
   interface Window {
@@ -19,6 +19,7 @@ export function useMcpHandler() {
   const addElement = useProjectStore((s) => s.addElement);
   const deleteElement = useProjectStore((s) => s.deleteElement);
   const updateElement = useProjectStore((s) => s.updateElement);
+  const duplicateElement = useProjectStore((s) => s.duplicateElement);
   const clearCanvas = useProjectStore((s) => s.clearCanvas);
   const createCanvas = useProjectStore((s) => s.createCanvas);
   const addLayer = useProjectStore((s) => s.addLayer);
@@ -83,6 +84,30 @@ export function useMcpHandler() {
             break;
           }
 
+          case 'shape:ellipse': {
+            const activeLayer = project.layers.find((l) => !l.locked);
+            if (!activeLayer) {
+              response = { success: false, error: 'No unlocked layer available' };
+              break;
+            }
+            const ellipse: EllipseElement = {
+              id: generateId(),
+              type: 'ellipse',
+              x: message.payload.x ?? 0,
+              y: message.payload.y ?? 0,
+              width: message.payload.width ?? 100,
+              height: message.payload.height ?? 100,
+              rotation: 0,
+              opacity: 100,
+              fill: message.payload.fill ?? '#10b981',
+              stroke: message.payload.stroke ?? '#047857',
+              strokeWidth: message.payload.strokeWidth ?? 0,
+            };
+            addElement(activeLayer.id, ellipse);
+            response = { success: true, data: { elementId: ellipse.id } };
+            break;
+          }
+
           case 'text:create': {
             const activeLayer = project.layers.find((l) => !l.locked);
             if (!activeLayer) {
@@ -121,6 +146,16 @@ export function useMcpHandler() {
             response = { success: true, data: null };
             break;
 
+          case 'element:style':
+            updateElement(message.payload.elementId, message.payload.style);
+            response = { success: true, data: null };
+            break;
+
+          case 'element:duplicate':
+            const newId = duplicateElement(message.payload.elementId);
+            response = { success: true, data: { elementId: newId } };
+            break;
+
           case 'layer:create':
             const layerId = addLayer(message.payload.name);
             response = { success: true, data: { layerId } };
@@ -155,5 +190,5 @@ export function useMcpHandler() {
 
       window.electronAPI.sendMcpResponse(requestId, response);
     });
-  }, [project, getState, addElement, deleteElement, updateElement, clearCanvas, createCanvas, addLayer, deleteLayer, setLayerVisibility, setLayerOpacity, setLayerLock]);
+  }, [project, getState, addElement, deleteElement, updateElement, duplicateElement, clearCanvas, createCanvas, addLayer, deleteLayer, setLayerVisibility, setLayerOpacity, setLayerLock]);
 }
