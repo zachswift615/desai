@@ -22,7 +22,7 @@ export function Layout({ toolbar, canvas, layers, properties }: LayoutProps) {
         </div>
 
         {/* Center: Canvas + Layers */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 min-w-0 flex flex-col">
           {/* Canvas area */}
           <div className="flex-1 overflow-hidden">{canvas}</div>
 
@@ -33,7 +33,7 @@ export function Layout({ toolbar, canvas, layers, properties }: LayoutProps) {
         </div>
 
         {/* Right: Properties */}
-        <div className="w-64 shrink-0 bg-gray-800 border-l border-gray-700 overflow-auto">
+        <div className="w-64 min-w-[256px] shrink-0 bg-gray-800 border-l border-gray-700 overflow-auto">
           {properties}
         </div>
       </div>

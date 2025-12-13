@@ -10,6 +10,10 @@
         "SPEAKUP_PROJECT": "desai-editor",
         "SPEAKUP_ANNOUNCE": "prefix"
       }
+    },
+    "desai": {
+      "command": "node",
+      "args": ["/Users/zachswift/projects/desai/packages/mcp-server/dist/index.js"]
     }
   }
 }
