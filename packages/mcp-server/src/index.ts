@@ -117,7 +117,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       // Shape creation
       {
         name: 'desai_shape_rectangle',
-        description: 'Create a rectangle on the canvas',
+        description: 'Create a rectangle on the canvas. Supports solid colors or linear gradients.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -125,7 +125,32 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             y: { type: 'number', description: 'Y position' },
             width: { type: 'number', description: 'Width' },
             height: { type: 'number', description: 'Height' },
-            fill: { type: 'string', description: 'Fill color (hex)', default: '#3b82f6' },
+            fill: {
+              oneOf: [
+                { type: 'string', description: 'Solid fill color (hex)' },
+                {
+                  type: 'object',
+                  description: 'Linear gradient',
+                  properties: {
+                    type: { type: 'string', enum: ['linear'] },
+                    angle: { type: 'number', description: 'Gradient angle in degrees (0=left-to-right, 90=top-to-bottom, 180=right-to-left)' },
+                    stops: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          color: { type: 'string', description: 'Stop color (hex)' },
+                          position: { type: 'number', description: 'Stop position (0-100)' }
+                        },
+                        required: ['color', 'position']
+                      }
+                    }
+                  },
+                  required: ['type', 'angle', 'stops']
+                }
+              ],
+              default: '#3b82f6'
+            },
             stroke: { type: 'string', description: 'Stroke color (hex)' },
             strokeWidth: { type: 'number', description: 'Stroke width', default: 0 },
             cornerRadius: { type: 'number', description: 'Corner radius', default: 0 },
