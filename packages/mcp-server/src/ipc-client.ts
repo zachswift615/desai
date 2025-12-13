@@ -1,9 +1,9 @@
 import { randomUUID } from 'crypto';
-import IPC from 'node-ipc';
+import nodeIpc from 'node-ipc';
 import type { IpcMessage, IpcResponse } from '@desai/shared';
 
-// node-ipc uses default export with a class instance
-const ipc = new (IPC as any).IPC();
+// node-ipc exports { default, IPCModule } - we need the default instance
+const ipc = (nodeIpc as any).default || nodeIpc;
 ipc.config.id = 'desai-mcp';
 ipc.config.retry = 1500;
 ipc.config.silent = true;
