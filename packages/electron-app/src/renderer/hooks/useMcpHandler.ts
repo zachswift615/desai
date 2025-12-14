@@ -13,6 +13,7 @@ declare global {
       loadImageFromPath: (filePath: string) => Promise<{ dataUrl: string; fileName: string } | { error: string }>;
       exportPng: () => Promise<string | null>;
       exportCanvasPng: (data: { dataUrl: string; width: number; height: number }) => Promise<string | null>;
+      exportCanvasPngDirect: (data: { dataUrl: string }) => Promise<string | null>;
       saveProject: (projectJson: string) => Promise<string | null>;
       loadProject: (filePath?: string) => Promise<{ content: string; filePath: string } | { error: string }>;
       onMcpCommand: (callback: (data: { requestId: string; message: IpcMessage }) => void) => () => void;
@@ -29,7 +30,7 @@ async function executeOp(
   message: IpcMessage,
   store: ReturnType<typeof useProjectStore.getState>
 ): Promise<IpcResponse> {
-  const { project, addElement, deleteElement, updateElement, duplicateElement, clearCanvas, createCanvas, addLayer, deleteLayer, setLayerVisibility, setLayerOpacity, setLayerLock, getState, setViewport } = store;
+  const { project, addElement, deleteElement, updateElement, duplicateElement, reorderElement, clearCanvas, createCanvas, addLayer, deleteLayer, setLayerVisibility, setLayerOpacity, setLayerLock, getState, setViewport } = store;
 
   switch (message.type) {
     case 'canvas:get-state': {
@@ -61,6 +62,28 @@ async function executeOp(
     case 'canvas:clear':
       clearCanvas();
       return { success: true, data: null };
+
+    case 'canvas:fit': {
+      // Calculate zoom to fit canvas in a reasonable viewport (assuming ~1200x800 viewport)
+      const viewportWidth = 1200;
+      const viewportHeight = 800;
+      const padding = 100; // padding around canvas
+      const { canvas } = project;
+      const zoomX = (viewportWidth - padding * 2) / canvas.width;
+      const zoomY = (viewportHeight - padding * 2) / canvas.height;
+      const zoom = Math.min(zoomX, zoomY, 1); // don't zoom in past 100%
+      // Center the canvas
+      const panX = (viewportWidth - canvas.width * zoom) / 2;
+      const panY = padding;
+      setViewport({ zoom, panX, panY });
+      return { success: true, data: { zoom, panX, panY } };
+    }
+
+    case 'canvas:zoom': {
+      const { zoom } = message.payload as { zoom: number };
+      setViewport({ zoom });
+      return { success: true, data: null };
+    }
 
     case 'canvas:create':
       createCanvas(
@@ -220,9 +243,165 @@ async function executeOp(
       return { success: true, data: { elementId: imageElement.id, naturalWidth, naturalHeight } };
     }
 
+    case 'device:frame': {
+      // Create a device-framed screenshot composite
+      const { screenshot, bezel, x, y, width: targetWidth, screenInset } = message.payload as {
+        screenshot: string;
+        bezel: string;
+        x?: number;
+        y?: number;
+        width?: number;
+        screenInset?: { top: number; right: number; bottom: number; left: number };
+      };
+
+      const activeLayer = project.layers.find((l) => !l.locked);
+      if (!activeLayer) {
+        return { success: false, error: 'No unlocked layer available' };
+      }
+
+      // Load screenshot image
+      const screenshotResult = await window.electronAPI.loadImageFromPath(screenshot);
+      if ('error' in screenshotResult) {
+        return { success: false, error: `Failed to load screenshot: ${screenshotResult.error}` };
+      }
+
+      // Load bezel image
+      const bezelResult = await window.electronAPI.loadImageFromPath(bezel);
+      if ('error' in bezelResult) {
+        return { success: false, error: `Failed to load bezel: ${bezelResult.error}` };
+      }
+
+      // Get bezel dimensions
+      const bezelImg = new Image();
+      const bezelDimensions = new Promise<{ width: number; height: number }>((resolve) => {
+        bezelImg.onload = () => resolve({ width: bezelImg.naturalWidth, height: bezelImg.naturalHeight });
+      });
+      bezelImg.src = bezelResult.dataUrl;
+      const { width: bezelNaturalWidth, height: bezelNaturalHeight } = await bezelDimensions;
+
+      // Calculate final dimensions
+      const scale = targetWidth ? targetWidth / bezelNaturalWidth : 1;
+      const finalWidth = bezelNaturalWidth * scale;
+      const finalHeight = bezelNaturalHeight * scale;
+
+      // Default screen inset (percentage-based for iPhone 16 Pro Max style bezels)
+      // These can be overridden via the screenInset parameter
+      const inset = screenInset || {
+        top: Math.round(finalHeight * 0.018),    // ~1.8% from top
+        right: Math.round(finalWidth * 0.032),   // ~3.2% from right
+        bottom: Math.round(finalHeight * 0.018), // ~1.8% from bottom
+        left: Math.round(finalWidth * 0.032),    // ~3.2% from left
+      };
+
+      // Calculate screen area within the bezel
+      const screenWidth = finalWidth - inset.left - inset.right;
+      const screenHeight = finalHeight - inset.top - inset.bottom;
+
+      const posX = x ?? 100;
+      const posY = y ?? 100;
+
+      // Create screenshot element (behind bezel)
+      const screenshotElement: ImageElement = {
+        id: generateId(),
+        type: 'image',
+        x: posX + inset.left + screenWidth / 2,
+        y: posY + inset.top + screenHeight / 2,
+        width: screenWidth,
+        height: screenHeight,
+        rotation: 0,
+        opacity: 100,
+        src: screenshotResult.dataUrl,
+        sourcePath: screenshot,
+        naturalWidth: 0, // Will be set by renderer
+        naturalHeight: 0,
+        cornerRadius: Math.round(finalWidth * 0.085), // ~8.5% corner radius for modern iPhones
+      };
+
+      // Create bezel element (on top)
+      const bezelElement: ImageElement = {
+        id: generateId(),
+        type: 'image',
+        x: posX + finalWidth / 2,
+        y: posY + finalHeight / 2,
+        width: finalWidth,
+        height: finalHeight,
+        rotation: 0,
+        opacity: 100,
+        src: bezelResult.dataUrl,
+        sourcePath: bezel,
+        naturalWidth: bezelNaturalWidth,
+        naturalHeight: bezelNaturalHeight,
+      };
+
+      // Add screenshot first (bottom), then bezel (top)
+      addElement(activeLayer.id, screenshotElement);
+      addElement(activeLayer.id, bezelElement);
+
+      return {
+        success: true,
+        data: {
+          screenshotId: screenshotElement.id,
+          bezelId: bezelElement.id,
+          dimensions: { width: finalWidth, height: finalHeight },
+        },
+      };
+    }
+
     case 'element:delete':
       deleteElement((message.payload as any).elementId);
       return { success: true, data: null };
+
+    case 'element:align': {
+      const { elementId, align } = message.payload as { elementId: string; align: string };
+      const { canvas } = project;
+
+      // Find the element
+      let element: any = null;
+      for (const layer of project.layers) {
+        element = layer.elements.find((e) => e.id === elementId);
+        if (element) break;
+      }
+
+      if (!element) {
+        return { success: false, error: `Element ${elementId} not found` };
+      }
+
+      const updates: Record<string, number> = {};
+
+      switch (align) {
+        case 'center':
+        case 'center-h':
+          // Center horizontally
+          updates.x = (canvas.width - element.width) / 2;
+          break;
+        case 'center-v':
+          // Center vertically
+          updates.y = (canvas.height - element.height) / 2;
+          break;
+        case 'center-both':
+          // Center both
+          updates.x = (canvas.width - element.width) / 2;
+          updates.y = (canvas.height - element.height) / 2;
+          break;
+        case 'left':
+          updates.x = 0;
+          break;
+        case 'right':
+          updates.x = canvas.width - element.width;
+          break;
+        case 'top':
+          updates.y = 0;
+          break;
+        case 'bottom':
+          updates.y = canvas.height - element.height;
+          break;
+        default:
+          return { success: false, error: `Unknown align value: ${align}` };
+      }
+
+      updateElement(elementId, updates);
+      return { success: true, data: null };
+    }
 
     case 'element:transform':
       updateElement((message.payload as any).elementId, (message.payload as any).transform);
@@ -235,6 +414,12 @@ async function executeOp(
     case 'element:duplicate': {
       const newId = duplicateElement((message.payload as any).elementId);
       return { success: true, data: { elementId: newId } };
+    }
+
+    case 'element:order': {
+      const { elementId, direction } = message.payload as { elementId: string; direction: 'front' | 'back' | 'forward' | 'backward' };
+      reorderElement(elementId, direction);
+      return { success: true, data: null };
     }
 
     case 'layer:create': {
@@ -267,32 +452,23 @@ async function executeOp(
 
     case 'export:canvas': {
       // Render canvas to PNG at full resolution
-      const { canvas } = project;
+      const { canvas, viewport } = project;
       const canvasEl = document.getElementById('design-canvas');
       if (!canvasEl) {
         return { success: false, error: 'Canvas element not found' };
       }
 
-      // Create an offscreen canvas at full resolution
-      const offscreen = document.createElement('canvas');
-      offscreen.width = canvas.width;
-      offscreen.height = canvas.height;
-      const ctx = offscreen.getContext('2d');
-      if (!ctx) {
-        return { success: false, error: 'Could not create canvas context' };
-      }
-
-      // Draw background
-      ctx.fillStyle = canvas.background;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Use html2canvas-style rendering by capturing the DOM element
-      // For now, we'll use a simpler approach - capture the canvas element scaled
       const html2canvas = await import('html2canvas').then(m => m.default).catch(() => null);
       if (!html2canvas) {
-        // Fallback: capture the canvas element at current scale
         return { success: false, error: 'html2canvas not available - install with: pnpm add html2canvas' };
       }
+
+      // Save current viewport and temporarily reset to 1:1 scale for accurate capture
+      const originalViewport = { ...viewport };
+      setViewport({ zoom: 1, panX: 0, panY: 0 });
+
+      // Wait for DOM to update with new viewport
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
       try {
         const renderedCanvas = await html2canvas(canvasEl, {
@@ -304,17 +480,19 @@ async function executeOp(
           useCORS: true,
         });
 
+        // Restore original viewport immediately after capture
+        setViewport(originalViewport);
+
         const dataUrl = renderedCanvas.toDataURL('image/png');
-        const exportPath = await window.electronAPI.exportCanvasPng({
-          dataUrl,
-          width: canvas.width,
-          height: canvas.height,
-        });
+        // Use direct export (no dialog) for MCP automation
+        const exportPath = await window.electronAPI.exportCanvasPngDirect({ dataUrl });
 
         return exportPath
           ? { success: true, data: { path: exportPath, width: canvas.width, height: canvas.height } }
-          : { success: false, error: 'Export cancelled or failed' };
+          : { success: false, error: 'Export failed' };
       } catch (err) {
+        // Restore viewport even on error
+        setViewport(originalViewport);
         return { success: false, error: `Canvas export failed: ${err}` };
       }
     }

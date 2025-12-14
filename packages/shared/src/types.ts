@@ -123,8 +123,9 @@ export interface ImageElement extends BaseElement {
   sourcePath?: string; // Original file path (for MCP state reporting)
   naturalWidth: number;
   naturalHeight: number;
-  filters: ImageFilters;
+  filters?: ImageFilters;
   crop?: CropArea;
+  cornerRadius?: number; // For rounded corners (e.g., device screen frames)
 }
 
 export interface ImageFilters {
@@ -207,7 +208,7 @@ export type IpcResponse<T = unknown> =
 
 // Unified MCP operation type
 export interface DesaiOp {
-  target: 'canvas' | 'layer' | 'shape' | 'text' | 'element' | 'image' | 'export';
+  target: 'canvas' | 'layer' | 'shape' | 'text' | 'element' | 'image' | 'export' | 'device' | 'project';
   op: string;
   [key: string]: unknown;
 }

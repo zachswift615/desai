@@ -275,12 +275,18 @@ export function CanvasElement({ element, selected, onSelect, onDragStart, onResi
         </div>
       );
 
-    case 'image':
+    case 'image': {
+      const filters = element.filters;
+      const filterStyle = filters
+        ? `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturate}%) blur(${filters.blur}px)`
+        : undefined;
       return (
         <div
           onMouseDown={handleMouseDown}
           style={{
             ...baseStyle,
+            borderRadius: element.cornerRadius,
+            overflow: element.cornerRadius ? 'hidden' : undefined,
           }}
         >
           <img
@@ -290,18 +296,14 @@ export function CanvasElement({ element, selected, onSelect, onDragStart, onResi
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              filter: `
-                brightness(${element.filters.brightness}%)
-                contrast(${element.filters.contrast}%)
-                saturate(${element.filters.saturate}%)
-                blur(${element.filters.blur}px)
-              `,
+              filter: filterStyle,
               pointerEvents: 'none',
             }}
           />
           {selected && onResizeStart && <ResizeHandles element={element} onResizeStart={onResizeStart} />}
         </div>
       );
+    }
 
     case 'line':
       return (

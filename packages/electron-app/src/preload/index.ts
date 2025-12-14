@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadImageFromPath: (filePath: string) => ipcRenderer.invoke('load-image-from-path', filePath),
   exportPng: () => ipcRenderer.invoke('export-png'),
   exportCanvasPng: (data: { dataUrl: string; width: number; height: number }) => ipcRenderer.invoke('export-canvas-png', data),
+  exportCanvasPngDirect: (data: { dataUrl: string }) => ipcRenderer.invoke('export-canvas-png-direct', data),
   saveProject: (projectJson: string) => ipcRenderer.invoke('save-project', projectJson),
   loadProject: (filePath?: string) => ipcRenderer.invoke('load-project', filePath),
   onMcpCommand: (callback: (data: { requestId: string; message: unknown }) => void) => {

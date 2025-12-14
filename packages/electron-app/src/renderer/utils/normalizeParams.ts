@@ -49,11 +49,12 @@ export function opToIpcType(op: DesaiOp): string {
   // Map short op names to full IPC type names
   const opMappings: Record<string, Record<string, string>> = {
     shape: { rect: 'rectangle', ellipse: 'ellipse' },
-    canvas: { create: 'create', get_state: 'get-state', screenshot: 'screenshot', clear: 'clear' },
+    canvas: { create: 'create', get_state: 'get-state', screenshot: 'screenshot', clear: 'clear', fit: 'fit', zoom: 'zoom' },
     layer: { create: 'create', delete: 'delete', visibility: 'set-visibility', opacity: 'set-opacity', lock: 'lock' },
     text: { create: 'create', update: 'update' },
-    element: { transform: 'transform', style: 'style', delete: 'delete', duplicate: 'duplicate' },
+    element: { transform: 'transform', style: 'style', delete: 'delete', duplicate: 'duplicate', align: 'align', order: 'order' },
     image: { add: 'import' },
+    device: { frame: 'frame' },
     export: { png: 'png', canvas: 'canvas' },
     project: { save: 'save', load: 'load' },
   };

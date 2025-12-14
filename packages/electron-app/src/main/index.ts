@@ -166,6 +166,20 @@ ipcMain.handle('export-canvas-png', async (_event, { dataUrl, width, height }: {
   return result.filePath;
 });
 
+// IPC handler for direct PNG export without dialog (for MCP automation)
+ipcMain.handle('export-canvas-png-direct', async (_event, { dataUrl }: { dataUrl: string }) => {
+  // Save to Downloads folder with timestamp
+  const downloadsPath = app.getPath('downloads');
+  const filePath = path.join(downloadsPath, `design-${Date.now()}.png`);
+
+  // Convert data URL to buffer and save
+  const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+  const pngBuffer = Buffer.from(base64Data, 'base64');
+  fs.writeFileSync(filePath, pngBuffer);
+
+  return filePath;
+});
+
 // IPC handler for saving project to JSON file
 ipcMain.handle('save-project', async (_event, projectJson: string) => {
   if (!mainWindow) return null;

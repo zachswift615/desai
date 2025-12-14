@@ -9,15 +9,16 @@ type ValidationResult =
       error: string;
     };
 
-const VALID_TARGETS = ['canvas', 'layer', 'shape', 'text', 'element', 'image', 'export', 'project'] as const;
+const VALID_TARGETS = ['canvas', 'layer', 'shape', 'text', 'element', 'image', 'device', 'export', 'project'] as const;
 
 const VALID_OPS: Record<string, string[]> = {
-  canvas: ['create', 'get_state', 'screenshot', 'clear'],
+  canvas: ['create', 'get_state', 'screenshot', 'clear', 'fit', 'zoom'],
   layer: ['create', 'delete', 'visibility', 'opacity', 'lock'],
   shape: ['rect', 'ellipse'],
   text: ['create', 'update'],
-  element: ['transform', 'style', 'delete', 'duplicate'],
+  element: ['transform', 'style', 'delete', 'duplicate', 'align', 'order'],
   image: ['add'],
+  device: ['frame'],
   export: ['png', 'canvas'],
   project: ['save', 'load'],
 };
@@ -43,8 +44,11 @@ const REQUIRED_PARAMS: Record<string, Record<string, string[]>> = {
     style: ['id'],
     delete: ['id'],
     duplicate: ['id'],
+    align: ['id', 'align'],
+    order: ['id', 'direction'],
   },
   image: { add: ['path'] },
+  device: { frame: ['screenshot', 'bezel'] },
 };
 
 export function validateOp(op: DesaiOp, index: number): ValidationResult {

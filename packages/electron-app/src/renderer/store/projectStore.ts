@@ -36,6 +36,7 @@ interface ProjectStore {
   updateElementNoHistory: (elementId: string, updates: Partial<Element>) => void;
   deleteElement: (elementId: string) => void;
   duplicateElement: (elementId: string) => string | null;
+  reorderElement: (elementId: string, direction: 'front' | 'back' | 'forward' | 'backward') => void;
 
   // Selection
   setSelection: (ids: string[]) => void;
@@ -302,6 +303,47 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       }
     }
     return null;
+  },
+
+  reorderElement: (elementId, direction) => {
+    const { project, pushHistory } = get();
+    for (const layer of project.layers) {
+      const index = layer.elements.findIndex((el) => el.id === elementId);
+      if (index !== -1) {
+        const elements = [...layer.elements];
+        let newIndex: number;
+
+        switch (direction) {
+          case 'front':
+            newIndex = elements.length - 1;
+            break;
+          case 'back':
+            newIndex = 0;
+            break;
+          case 'forward':
+            newIndex = Math.min(index + 1, elements.length - 1);
+            break;
+          case 'backward':
+            newIndex = Math.max(index - 1, 0);
+            break;
+        }
+
+        if (newIndex !== index) {
+          pushHistory();
+          const [element] = elements.splice(index, 1);
+          elements.splice(newIndex, 0, element);
+          set({
+            project: {
+              ...project,
+              layers: project.layers.map((l) =>
+                l.id === layer.id ? { ...l, elements } : l
+              ),
+            },
+          });
+        }
+        return;
+      }
+    }
   },
 
   setSelection: (ids) => set({ selection: ids }),
