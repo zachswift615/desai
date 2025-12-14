@@ -10,6 +10,34 @@
 
 ---
 
+## Progress Summary
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 1 | Gradient fill types | ✅ DONE |
+| 2 | Render gradients | ✅ DONE |
+| 3 | Gradient MCP tool | ✅ DONE |
+| 4 | Text shadow types | ✅ DONE |
+| 5 | Render text shadows | ✅ DONE |
+| 6 | Text shadow MCP tool | ✅ DONE |
+| 7 | PNG export IPC | ✅ DONE |
+| 8 | Export MCP tool | ✅ DONE |
+| 9 | Multi-design store | ⏳ PENDING |
+| 10 | Design MCP tools | ⏳ PENDING |
+| 11 | Design tabs UI | ⏳ PENDING |
+| 12 | Copy/paste shortcuts | ⏳ PENDING |
+| 13 | Integration test | ⏳ PENDING |
+
+**Bug fixes completed during implementation:**
+- Fixed duplicate MCP listener registration causing element duplication
+- Fixed text element dragging (added e.preventDefault to prevent native text selection)
+- Fixed text color picker losing selection (added stopPropagation to PropertiesPanel)
+- Fixed text resize handles not visible (changed overflow to visible)
+- Fixed multiline text content collapsing (use innerText instead of textContent)
+- Changed default text color from white to black for visibility
+
+---
+
 ## Task 1: Add Gradient Fill Support to Types
 
 **Files:**
