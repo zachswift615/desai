@@ -4,7 +4,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   captureScreenshot: () => ipcRenderer.invoke('capture-screenshot'),
   selectImage: () => ipcRenderer.invoke('select-image'),
   onMcpCommand: (callback: (data: { requestId: string; message: unknown }) => void) => {
-    ipcRenderer.on('mcp-command', (_event, data) => callback(data));
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data as { requestId: string; message: unknown });
+    ipcRenderer.on('mcp-command', handler);
+    // Return cleanup function
+    return () => ipcRenderer.removeListener('mcp-command', handler);
   },
   sendMcpResponse: (requestId: string, response: unknown) => {
     ipcRenderer.send('mcp-response', { requestId, response });

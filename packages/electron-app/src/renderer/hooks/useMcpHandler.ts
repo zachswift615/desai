@@ -8,31 +8,20 @@ declare global {
     electronAPI: {
       captureScreenshot: () => Promise<string>;
       selectImage: () => Promise<{ dataUrl: string; fileName: string } | null>;
-      onMcpCommand: (callback: (data: { requestId: string; message: IpcMessage }) => void) => void;
+      onMcpCommand: (callback: (data: { requestId: string; message: IpcMessage }) => void) => () => void;
       sendMcpResponse: (requestId: string, response: IpcResponse) => void;
     };
   }
 }
 
 export function useMcpHandler() {
-  const project = useProjectStore((s) => s.project);
-  const getState = useProjectStore((s) => s.getState);
-  const addElement = useProjectStore((s) => s.addElement);
-  const deleteElement = useProjectStore((s) => s.deleteElement);
-  const updateElement = useProjectStore((s) => s.updateElement);
-  const duplicateElement = useProjectStore((s) => s.duplicateElement);
-  const clearCanvas = useProjectStore((s) => s.clearCanvas);
-  const createCanvas = useProjectStore((s) => s.createCanvas);
-  const addLayer = useProjectStore((s) => s.addLayer);
-  const deleteLayer = useProjectStore((s) => s.deleteLayer);
-  const setLayerVisibility = useProjectStore((s) => s.setLayerVisibility);
-  const setLayerOpacity = useProjectStore((s) => s.setLayerOpacity);
-  const setLayerLock = useProjectStore((s) => s.setLayerLock);
-
   useEffect(() => {
     if (!window.electronAPI) return;
 
-    window.electronAPI.onMcpCommand(async ({ requestId, message }) => {
+    const cleanup = window.electronAPI.onMcpCommand(async ({ requestId, message }) => {
+      // Access store directly to avoid stale closures
+      const store = useProjectStore.getState();
+      const { project, getState, addElement, deleteElement, updateElement, duplicateElement, clearCanvas, createCanvas, addLayer, deleteLayer, setLayerVisibility, setLayerOpacity, setLayerLock } = store;
       let response: IpcResponse;
 
       try {
@@ -192,5 +181,8 @@ export function useMcpHandler() {
 
       window.electronAPI.sendMcpResponse(requestId, response);
     });
-  }, [project, getState, addElement, deleteElement, updateElement, duplicateElement, clearCanvas, createCanvas, addLayer, deleteLayer, setLayerVisibility, setLayerOpacity, setLayerLock]);
+
+    // Cleanup listener on unmount
+    return cleanup;
+  }, []); // Empty deps - we access store directly inside the callback
 }
