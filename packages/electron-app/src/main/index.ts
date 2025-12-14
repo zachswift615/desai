@@ -98,6 +98,31 @@ ipcMain.handle('select-image', async () => {
   };
 });
 
+// IPC handler for PNG export - exports visible canvas area with save dialog
+ipcMain.handle('export-png', async () => {
+  if (!mainWindow) return null;
+
+  // Capture the page
+  const image = await mainWindow.webContents.capturePage();
+
+  // Show save dialog
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export as PNG',
+    defaultPath: `design-${Date.now()}.png`,
+    filters: [{ name: 'PNG Image', extensions: ['png'] }],
+  });
+
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
+
+  // Save the PNG
+  const pngBuffer = image.toPNG();
+  fs.writeFileSync(result.filePath, pngBuffer);
+
+  return result.filePath;
+});
+
 // Handle MCP responses from renderer
 ipcMain.on('mcp-response', (_event, { requestId, response }) => {
   handleRendererResponse(requestId, response);
