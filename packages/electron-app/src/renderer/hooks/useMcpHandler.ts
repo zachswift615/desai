@@ -8,6 +8,7 @@ declare global {
     electronAPI: {
       captureScreenshot: () => Promise<string>;
       selectImage: () => Promise<{ dataUrl: string; fileName: string } | null>;
+      exportPng: () => Promise<string | null>;
       onMcpCommand: (callback: (data: { requestId: string; message: IpcMessage }) => void) => () => void;
       sendMcpResponse: (requestId: string, response: IpcResponse) => void;
     };
@@ -171,6 +172,14 @@ export function useMcpHandler() {
             setLayerLock(message.payload.layerId, message.payload.locked);
             response = { success: true, data: null };
             break;
+
+          case 'export:png': {
+            const exportPath = await window.electronAPI.exportPng();
+            response = exportPath
+              ? { success: true, data: { path: exportPath } }
+              : { success: false, error: 'Export cancelled or failed' };
+            break;
+          }
 
           default:
             response = { success: false, error: `Unknown command: ${(message as any).type}` };

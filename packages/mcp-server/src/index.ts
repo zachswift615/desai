@@ -276,6 +276,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ['elementId'],
         },
       },
+
+      // Export
+      {
+        name: 'desai_export_png',
+        description: 'Export the current canvas as a PNG file. Opens save dialog for user to choose location.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
     ],
   };
 });
@@ -392,6 +402,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case 'desai_element_duplicate':
       message = { type: 'element:duplicate', payload: { elementId: (args as any).elementId } };
+      break;
+
+    case 'desai_export_png':
+      message = { type: 'export:png', payload: {} };
       break;
 
     default:
