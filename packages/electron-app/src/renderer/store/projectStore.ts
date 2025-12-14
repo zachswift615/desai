@@ -54,6 +54,7 @@ interface ProjectStore {
   undo: () => void;
   redo: () => void;
   pushHistory: () => void;
+  restoreProject: (snapshot: DesaiProject) => void;
 }
 
 const defaultProject: DesaiProject = {
@@ -348,4 +349,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       },
     });
   },
+
+  restoreProject: (snapshot) => set({ project: snapshot }),
 }));
