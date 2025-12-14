@@ -238,7 +238,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         layers: project.layers.map((layer) => ({
           ...layer,
           elements: layer.elements.map((el) =>
-            el.id === elementId ? { ...el, ...updates } : el
+            el.id === elementId ? ({ ...el, ...updates } as typeof el) : el
           ),
         })),
       },
@@ -253,7 +253,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         layers: project.layers.map((layer) => ({
           ...layer,
           elements: layer.elements.map((el) =>
-            el.id === elementId ? { ...el, ...updates } : el
+            el.id === elementId ? ({ ...el, ...updates } as typeof el) : el
           ),
         })),
       },
@@ -307,8 +307,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   setSelection: (ids) => set({ selection: ids }),
   clearSelection: () => set({ selection: [] }),
 
-  setViewport: (viewport) =>
-    set((state) => ({ viewport: { ...state.viewport, ...viewport } })),
+  setViewport: (viewport) => {
+    console.log('setViewport called with:', viewport);
+    set((state) => {
+      const newViewport = { ...state.viewport, ...viewport };
+      console.log('setViewport result:', newViewport);
+      return { viewport: newViewport };
+    });
+  },
 
   setActiveTool: (tool) => set({ activeTool: tool }),
 

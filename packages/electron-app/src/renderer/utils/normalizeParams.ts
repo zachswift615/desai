@@ -54,7 +54,8 @@ export function opToIpcType(op: DesaiOp): string {
     text: { create: 'create', update: 'update' },
     element: { transform: 'transform', style: 'style', delete: 'delete', duplicate: 'duplicate' },
     image: { add: 'import' },
-    export: { png: 'png' },
+    export: { png: 'png', canvas: 'canvas' },
+    project: { save: 'save', load: 'load' },
   };
 
   const mappedOp = opMappings[target]?.[operation] ?? operation;

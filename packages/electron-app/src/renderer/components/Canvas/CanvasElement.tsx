@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import type { Element, Fill } from '@desai/shared';
+import type { Element, Fill, BoxShadow } from '@desai/shared';
 
 function fillToCSS(fill: Fill): string {
   if (typeof fill === 'string') {
@@ -11,7 +11,18 @@ function fillToCSS(fill: Fill): string {
       .join(', ');
     return `linear-gradient(${fill.angle}deg, ${stops})`;
   }
+  if (fill.type === 'radial') {
+    const stops = fill.stops
+      .map(s => `${s.color} ${s.position}%`)
+      .join(', ');
+    return `radial-gradient(circle at ${fill.cx}% ${fill.cy}%, ${stops})`;
+  }
   return '#ffffff';
+}
+
+function boxShadowToCSS(shadow: BoxShadow): string {
+  const inset = shadow.inset ? 'inset ' : '';
+  return `${inset}${shadow.x}px ${shadow.y}px ${shadow.blur}px ${shadow.spread}px ${shadow.color}`;
 }
 
 interface CanvasElementProps {
@@ -216,6 +227,7 @@ export function CanvasElement({ element, selected, onSelect, onDragStart, onResi
             background: fillToCSS(element.fill),
             border: element.strokeWidth ? `${element.strokeWidth}px solid ${element.stroke}` : 'none',
             borderRadius: element.cornerRadius,
+            boxShadow: element.boxShadow ? boxShadowToCSS(element.boxShadow) : undefined,
           }}
         >
           {selected && onResizeStart && <ResizeHandles element={element} onResizeStart={onResizeStart} />}
@@ -228,9 +240,10 @@ export function CanvasElement({ element, selected, onSelect, onDragStart, onResi
           onMouseDown={handleMouseDown}
           style={{
             ...baseStyle,
-            backgroundColor: element.fill,
+            background: fillToCSS(element.fill),
             border: element.strokeWidth ? `${element.strokeWidth}px solid ${element.stroke}` : 'none',
             borderRadius: '50%',
+            boxShadow: element.boxShadow ? boxShadowToCSS(element.boxShadow) : undefined,
           }}
         >
           {selected && onResizeStart && <ResizeHandles element={element} onResizeStart={onResizeStart} />}

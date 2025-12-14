@@ -90,7 +90,7 @@ export function PropertiesPanel() {
           <div className="text-xs text-gray-500 uppercase">Fill</div>
           <PropertyInput
             label="Color"
-            value={selectedElement.fill}
+            value={typeof selectedElement.fill === 'string' ? selectedElement.fill : '#000000'}
             type="color"
             onChange={(v) => update({ fill: v as string })}
           />

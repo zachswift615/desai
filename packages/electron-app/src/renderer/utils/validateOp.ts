@@ -9,7 +9,7 @@ type ValidationResult =
       error: string;
     };
 
-const VALID_TARGETS = ['canvas', 'layer', 'shape', 'text', 'element', 'image', 'export'] as const;
+const VALID_TARGETS = ['canvas', 'layer', 'shape', 'text', 'element', 'image', 'export', 'project'] as const;
 
 const VALID_OPS: Record<string, string[]> = {
   canvas: ['create', 'get_state', 'screenshot', 'clear'],
@@ -18,7 +18,8 @@ const VALID_OPS: Record<string, string[]> = {
   text: ['create', 'update'],
   element: ['transform', 'style', 'delete', 'duplicate'],
   image: ['add'],
-  export: ['png'],
+  export: ['png', 'canvas'],
+  project: ['save', 'load'],
 };
 
 const REQUIRED_PARAMS: Record<string, Record<string, string[]>> = {

@@ -142,3 +142,72 @@ ipcMain.handle('load-image-from-path', async (_event, filePath: string) => {
 ipcMain.on('mcp-response', (_event, { requestId, response }) => {
   handleRendererResponse(requestId, response);
 });
+
+// IPC handler for canvas-only PNG export (without UI chrome)
+ipcMain.handle('export-canvas-png', async (_event, { dataUrl, width, height }: { dataUrl: string; width: number; height: number }) => {
+  if (!mainWindow) return null;
+
+  // Show save dialog
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export Canvas as PNG',
+    defaultPath: `design-${Date.now()}.png`,
+    filters: [{ name: 'PNG Image', extensions: ['png'] }],
+  });
+
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
+
+  // Convert data URL to buffer and save
+  const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+  const pngBuffer = Buffer.from(base64Data, 'base64');
+  fs.writeFileSync(result.filePath, pngBuffer);
+
+  return result.filePath;
+});
+
+// IPC handler for saving project to JSON file
+ipcMain.handle('save-project', async (_event, projectJson: string) => {
+  if (!mainWindow) return null;
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Save Project',
+    defaultPath: `project-${Date.now()}.json`,
+    filters: [{ name: 'Desai Project', extensions: ['json'] }],
+  });
+
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
+
+  fs.writeFileSync(result.filePath, projectJson, 'utf-8');
+  return result.filePath;
+});
+
+// IPC handler for loading project from JSON file
+ipcMain.handle('load-project', async (_event, filePath?: string) => {
+  if (!mainWindow) return { error: 'No window' };
+
+  let targetPath = filePath;
+
+  // If no path provided, show open dialog
+  if (!targetPath) {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Load Project',
+      filters: [{ name: 'Desai Project', extensions: ['json'] }],
+      properties: ['openFile'],
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return { error: 'Cancelled' };
+    }
+    targetPath = result.filePaths[0];
+  }
+
+  if (!fs.existsSync(targetPath)) {
+    return { error: `File not found: ${targetPath}` };
+  }
+
+  const content = fs.readFileSync(targetPath, 'utf-8');
+  return { content, filePath: targetPath };
+});

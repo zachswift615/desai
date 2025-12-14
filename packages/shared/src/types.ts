@@ -53,7 +53,14 @@ export interface LinearGradient {
   stops: GradientStop[];
 }
 
-export type Fill = string | LinearGradient;
+export interface RadialGradient {
+  type: 'radial';
+  cx: number; // center x (0-100%)
+  cy: number; // center y (0-100%)
+  stops: GradientStop[];
+}
+
+export type Fill = string | LinearGradient | RadialGradient;
 
 export interface RectElement extends BaseElement {
   type: 'rect';
@@ -61,13 +68,15 @@ export interface RectElement extends BaseElement {
   stroke: string;
   strokeWidth: number;
   cornerRadius: number;
+  boxShadow?: BoxShadow;
 }
 
 export interface EllipseElement extends BaseElement {
   type: 'ellipse';
-  fill: string;
+  fill: Fill;
   stroke: string;
   strokeWidth: number;
+  boxShadow?: BoxShadow;
 }
 
 export interface LineElement extends BaseElement {
@@ -85,6 +94,15 @@ export interface TextShadow {
   y: number;
   blur: number;
   color: string;
+}
+
+export interface BoxShadow {
+  x: number;
+  y: number;
+  blur: number;
+  spread: number;
+  color: string;
+  inset?: boolean;
 }
 
 export interface TextElement extends BaseElement {

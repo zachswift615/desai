@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useProjectStore } from '../../store';
 
 const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
@@ -7,55 +7,87 @@ export function ZoomControls() {
   const viewport = useProjectStore((s) => s.viewport);
   const setViewport = useProjectStore((s) => s.setViewport);
   const project = useProjectStore((s) => s.project);
+  const [zoomMode, setZoomMode] = useState<'fit' | 'width' | 'custom'>('custom');
 
   const zoomPercent = Math.round(viewport.zoom * 100);
 
   const zoomIn = useCallback(() => {
     const newZoom = Math.min(5, viewport.zoom * 1.25);
     setViewport({ zoom: newZoom });
+    setZoomMode('custom');
   }, [viewport.zoom, setViewport]);
 
   const zoomOut = useCallback(() => {
     const newZoom = Math.max(0.1, viewport.zoom / 1.25);
     setViewport({ zoom: newZoom });
+    setZoomMode('custom');
   }, [viewport.zoom, setViewport]);
 
   const setZoom100 = useCallback(() => {
     setViewport({ zoom: 1, panX: 0, panY: 0 });
+    setZoomMode('custom');
   }, [setViewport]);
 
   const fitToView = useCallback(() => {
-    // Get the canvas container dimensions (approximate - toolbar 56px, layers panel ~200px, properties ~280px)
-    const containerWidth = window.innerWidth - 56 - 200 - 280 - 64; // 64px padding
-    const containerHeight = window.innerHeight - 80 - 64; // header + padding
+    // Get actual canvas container dimensions from DOM
+    const container = document.getElementById('canvas-container');
+    if (!container) {
+      console.warn('Canvas container not found');
+      return;
+    }
+
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
 
     const canvasWidth = project.canvas.width;
     const canvasHeight = project.canvas.height;
 
-    // Calculate zoom to fit both dimensions
-    const zoomX = containerWidth / canvasWidth;
-    const zoomY = containerHeight / canvasHeight;
+    console.log('fitToView:', { containerWidth, containerHeight, canvasWidth, canvasHeight });
+
+    // Calculate zoom to fit both dimensions with some padding
+    const padding = 40; // pixels of padding around canvas
+    const availableWidth = containerWidth - padding * 2;
+    const availableHeight = containerHeight - padding * 2;
+
+    const zoomX = availableWidth / canvasWidth;
+    const zoomY = availableHeight / canvasHeight;
     const newZoom = Math.min(zoomX, zoomY, 1); // Don't zoom in past 100%
 
-    // Center the canvas
+    console.log('fitToView zoom:', { zoomX, zoomY, newZoom });
+
+    // Center the canvas in the container
+    const scaledWidth = canvasWidth * newZoom;
+    const scaledHeight = canvasHeight * newZoom;
+    const panX = (containerWidth - scaledWidth) / 2;
+    const panY = (containerHeight - scaledHeight) / 2;
+
+    console.log('fitToView result:', { newZoom, panX, panY });
+
+    setViewport({ zoom: newZoom, panX, panY });
+    setZoomMode('fit');
+  }, [project.canvas.width, project.canvas.height, setViewport]);
+
+  const fitWidth = useCallback(() => {
+    const container = document.getElementById('canvas-container');
+    if (!container) return;
+
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    const padding = 40;
+    const availableWidth = containerWidth - padding * 2;
+    const canvasWidth = project.canvas.width;
+    const canvasHeight = project.canvas.height;
+
+    const newZoom = Math.min(availableWidth / canvasWidth, 1);
     const scaledWidth = canvasWidth * newZoom;
     const scaledHeight = canvasHeight * newZoom;
     const panX = (containerWidth - scaledWidth) / 2;
     const panY = (containerHeight - scaledHeight) / 2;
 
     setViewport({ zoom: newZoom, panX, panY });
+    setZoomMode('width');
   }, [project.canvas.width, project.canvas.height, setViewport]);
-
-  const fitWidth = useCallback(() => {
-    const containerWidth = window.innerWidth - 56 - 200 - 280 - 64;
-    const canvasWidth = project.canvas.width;
-
-    const newZoom = Math.min(containerWidth / canvasWidth, 1);
-    const scaledWidth = canvasWidth * newZoom;
-    const panX = (containerWidth - scaledWidth) / 2;
-
-    setViewport({ zoom: newZoom, panX, panY: 0 });
-  }, [project.canvas.width, setViewport]);
 
   const handlePresetChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -66,8 +98,18 @@ export function ZoomControls() {
     } else {
       const zoom = parseFloat(value);
       setViewport({ zoom });
+      setZoomMode('custom');
     }
   }, [fitToView, fitWidth, setViewport]);
+
+  // Determine dropdown display value
+  const getDropdownValue = () => {
+    if (zoomMode === 'fit') return 'fit';
+    if (zoomMode === 'width') return 'width';
+    // Find if current zoom matches a preset
+    const matchingPreset = ZOOM_PRESETS.find(z => Math.abs(z - viewport.zoom) < 0.01);
+    return matchingPreset?.toString() || 'custom';
+  };
 
   return (
     <div className="flex items-center gap-1 bg-gray-800 rounded px-2 py-1">
@@ -86,13 +128,16 @@ export function ZoomControls() {
 
       {/* Zoom Dropdown */}
       <select
-        value={viewport.zoom}
+        value={getDropdownValue()}
         onChange={handlePresetChange}
         className="bg-gray-700 text-gray-200 text-xs rounded px-2 py-1 min-w-[80px] cursor-pointer hover:bg-gray-600 transition-colors"
       >
         <option value="fit">Fit to View</option>
         <option value="width">Fit Width</option>
         <option disabled>──────</option>
+        {zoomMode === 'custom' && !ZOOM_PRESETS.find(z => Math.abs(z - viewport.zoom) < 0.01) && (
+          <option value="custom">{zoomPercent}%</option>
+        )}
         {ZOOM_PRESETS.map((z) => (
           <option key={z} value={z}>
             {Math.round(z * 100)}%

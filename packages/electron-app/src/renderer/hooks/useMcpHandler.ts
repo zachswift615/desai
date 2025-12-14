@@ -12,6 +12,9 @@ declare global {
       selectImage: () => Promise<{ dataUrl: string; fileName: string } | null>;
       loadImageFromPath: (filePath: string) => Promise<{ dataUrl: string; fileName: string } | { error: string }>;
       exportPng: () => Promise<string | null>;
+      exportCanvasPng: (data: { dataUrl: string; width: number; height: number }) => Promise<string | null>;
+      saveProject: (projectJson: string) => Promise<string | null>;
+      loadProject: (filePath?: string) => Promise<{ content: string; filePath: string } | { error: string }>;
       onMcpCommand: (callback: (data: { requestId: string; message: IpcMessage }) => void) => () => void;
       sendMcpResponse: (requestId: string, response: IpcResponse) => void;
     };
@@ -26,7 +29,7 @@ async function executeOp(
   message: IpcMessage,
   store: ReturnType<typeof useProjectStore.getState>
 ): Promise<IpcResponse> {
-  const { project, addElement, deleteElement, updateElement, duplicateElement, clearCanvas, createCanvas, addLayer, deleteLayer, setLayerVisibility, setLayerOpacity, setLayerLock, getState } = store;
+  const { project, addElement, deleteElement, updateElement, duplicateElement, clearCanvas, createCanvas, addLayer, deleteLayer, setLayerVisibility, setLayerOpacity, setLayerLock, getState, setViewport } = store;
 
   switch (message.type) {
     case 'canvas:get-state': {
@@ -85,6 +88,7 @@ async function executeOp(
         stroke: (message.payload as any).stroke ?? '#1e40af',
         strokeWidth: (message.payload as any).strokeWidth ?? 0,
         cornerRadius: (message.payload as any).cornerRadius ?? 0,
+        boxShadow: (message.payload as any).boxShadow,
       };
       addElement(activeLayer.id, rect);
       return { success: true, data: { elementId: rect.id } };
@@ -107,6 +111,7 @@ async function executeOp(
         fill: (message.payload as any).fill ?? '#10b981',
         stroke: (message.payload as any).stroke ?? '#047857',
         strokeWidth: (message.payload as any).strokeWidth ?? 0,
+        boxShadow: (message.payload as any).boxShadow,
       };
       addElement(activeLayer.id, ellipse);
       return { success: true, data: { elementId: ellipse.id } };
@@ -132,7 +137,7 @@ async function executeOp(
         fontWeight: (message.payload as any).fontWeight ?? 'normal',
         fill: (message.payload as any).fill ?? '#000000',
         align: (message.payload as any).align ?? 'left',
-        lineHeight: 1.2,
+        lineHeight: (message.payload as any).lineHeight ?? 1.2,
         shadow: (message.payload as any).shadow,
       };
       addElement(activeLayer.id, text);
@@ -167,13 +172,37 @@ async function executeOp(
       img.src = dataUrl;
       const { width: naturalWidth, height: naturalHeight } = await dimensionsPromise;
 
+      // Calculate dimensions preserving aspect ratio if only one is provided
+      const requestedWidth = (message.payload as any).width;
+      const requestedHeight = (message.payload as any).height;
+      let finalWidth: number;
+      let finalHeight: number;
+
+      if (requestedWidth !== undefined && requestedHeight !== undefined) {
+        // Both provided - use as-is
+        finalWidth = requestedWidth;
+        finalHeight = requestedHeight;
+      } else if (requestedWidth !== undefined) {
+        // Only width provided - calculate height to preserve aspect ratio
+        finalWidth = requestedWidth;
+        finalHeight = (requestedWidth / naturalWidth) * naturalHeight;
+      } else if (requestedHeight !== undefined) {
+        // Only height provided - calculate width to preserve aspect ratio
+        finalHeight = requestedHeight;
+        finalWidth = (requestedHeight / naturalHeight) * naturalWidth;
+      } else {
+        // Neither provided - use natural dimensions
+        finalWidth = naturalWidth;
+        finalHeight = naturalHeight;
+      }
+
       const imageElement: ImageElement = {
         id: generateId(),
         type: 'image',
         x: (message.payload as any).x ?? 100,
         y: (message.payload as any).y ?? 100,
-        width: (message.payload as any).width ?? naturalWidth,
-        height: (message.payload as any).height ?? naturalHeight,
+        width: finalWidth,
+        height: finalHeight,
         rotation: 0,
         opacity: 100,
         src: dataUrl,
@@ -234,6 +263,127 @@ async function executeOp(
       return exportPath
         ? { success: true, data: { path: exportPath } }
         : { success: false, error: 'Export cancelled or failed' };
+    }
+
+    case 'export:canvas': {
+      // Render canvas to PNG at full resolution
+      const { canvas } = project;
+      const canvasEl = document.getElementById('design-canvas');
+      if (!canvasEl) {
+        return { success: false, error: 'Canvas element not found' };
+      }
+
+      // Create an offscreen canvas at full resolution
+      const offscreen = document.createElement('canvas');
+      offscreen.width = canvas.width;
+      offscreen.height = canvas.height;
+      const ctx = offscreen.getContext('2d');
+      if (!ctx) {
+        return { success: false, error: 'Could not create canvas context' };
+      }
+
+      // Draw background
+      ctx.fillStyle = canvas.background;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Use html2canvas-style rendering by capturing the DOM element
+      // For now, we'll use a simpler approach - capture the canvas element scaled
+      const html2canvas = await import('html2canvas').then(m => m.default).catch(() => null);
+      if (!html2canvas) {
+        // Fallback: capture the canvas element at current scale
+        return { success: false, error: 'html2canvas not available - install with: pnpm add html2canvas' };
+      }
+
+      try {
+        const renderedCanvas = await html2canvas(canvasEl, {
+          width: canvas.width,
+          height: canvas.height,
+          scale: 1,
+          backgroundColor: canvas.background,
+          logging: false,
+          useCORS: true,
+        });
+
+        const dataUrl = renderedCanvas.toDataURL('image/png');
+        const exportPath = await window.electronAPI.exportCanvasPng({
+          dataUrl,
+          width: canvas.width,
+          height: canvas.height,
+        });
+
+        return exportPath
+          ? { success: true, data: { path: exportPath, width: canvas.width, height: canvas.height } }
+          : { success: false, error: 'Export cancelled or failed' };
+      } catch (err) {
+        return { success: false, error: `Canvas export failed: ${err}` };
+      }
+    }
+
+    case 'project:save': {
+      const projectJson = JSON.stringify({ project }, null, 2);
+      const filePath = (message.payload as any)?.filePath;
+
+      if (filePath) {
+        // Direct save to specified path (for MCP use)
+        // Note: This would need a direct file write IPC handler
+        // For now, use the save dialog version
+      }
+
+      const savedPath = await window.electronAPI.saveProject(projectJson);
+      return savedPath
+        ? { success: true, data: { path: savedPath } }
+        : { success: false, error: 'Save cancelled or failed' };
+    }
+
+    case 'project:load': {
+      const filePath = (message.payload as any)?.filePath;
+      const result = await window.electronAPI.loadProject(filePath);
+
+      if ('error' in result) {
+        return { success: false, error: result.error };
+      }
+
+      try {
+        const parsed = JSON.parse(result.content);
+        if (parsed.project) {
+          // Restore images from their source paths
+          for (const layer of parsed.project.layers || []) {
+            for (const element of layer.elements || []) {
+              if (element.type === 'image' && element.sourcePath) {
+                // Reload image data from source path
+                const imgResult = await window.electronAPI.loadImageFromPath(element.sourcePath);
+                if (!('error' in imgResult)) {
+                  element.src = imgResult.dataUrl;
+                }
+              }
+            }
+          }
+          store.restoreProject(parsed.project);
+
+          // Center viewport on loaded canvas
+          // Calculate zoom to fit canvas in typical viewport (assume ~1200x800 visible area)
+          const canvasWidth = parsed.project.canvas?.width || 1920;
+          const canvasHeight = parsed.project.canvas?.height || 1080;
+          const viewportWidth = 1200;
+          const viewportHeight = 800;
+          const zoomX = viewportWidth / canvasWidth;
+          const zoomY = viewportHeight / canvasHeight;
+          const zoom = Math.min(zoomX, zoomY, 1) * 0.9; // 90% to leave margin
+
+          // Center the canvas
+          const scaledWidth = canvasWidth * zoom;
+          const scaledHeight = canvasHeight * zoom;
+          const panX = (viewportWidth - scaledWidth) / 2;
+          const panY = (viewportHeight - scaledHeight) / 2;
+
+          setViewport({ zoom, panX, panY });
+
+          return { success: true, data: { path: result.filePath } };
+        }
+        return { success: false, error: 'Invalid project file format' };
+      } catch (err) {
+        return { success: false, error: `Failed to parse project file: ${err}` };
+      }
     }
 
     default:

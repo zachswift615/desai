@@ -430,7 +430,7 @@ export function Canvas() {
   return (
     <div
       ref={containerRef}
-      className="h-full w-full overflow-hidden bg-gray-950 flex items-center justify-center p-8"
+      className="h-full w-full overflow-hidden bg-gray-950 relative"
       onWheel={handleWheel}
       onMouseDown={handleContainerMouseDown}
       onMouseMove={handleContainerMouseMove}
@@ -439,9 +439,10 @@ export function Canvas() {
       style={{ cursor: cursorStyle }}
     >
       <div
+        id="design-canvas"
         ref={canvasRef}
         onClick={handleCanvasClick}
-        className="relative shadow-2xl"
+        className="absolute shadow-2xl"
         style={{
           width: project.canvas.width,
           height: project.canvas.height,

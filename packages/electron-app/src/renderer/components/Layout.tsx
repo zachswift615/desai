@@ -1,5 +1,6 @@
 import React from 'react';
 import { ZoomControls } from './ZoomControls';
+import { FileMenu } from './FileMenu';
 
 interface LayoutProps {
   toolbar: React.ReactNode;
@@ -13,7 +14,10 @@ export function Layout({ toolbar, canvas, layers, properties }: LayoutProps) {
     <div className="h-screen w-screen flex flex-col bg-gray-900 text-gray-100">
       {/* Menu bar with zoom controls */}
       <div className="h-8 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 text-sm">
-        <span className="font-semibold">Desai</span>
+        <div className="flex items-center gap-4">
+          <span className="font-semibold">Desai</span>
+          <FileMenu />
+        </div>
         <ZoomControls />
       </div>
 
@@ -26,7 +30,7 @@ export function Layout({ toolbar, canvas, layers, properties }: LayoutProps) {
         {/* Center: Canvas + Layers */}
         <div className="flex-1 min-w-0 flex flex-col">
           {/* Canvas area */}
-          <div className="flex-1 overflow-hidden">{canvas}</div>
+          <div id="canvas-container" className="flex-1 overflow-hidden">{canvas}</div>
 
           {/* Bottom: Layers panel */}
           <div className="h-48 bg-gray-800 border-t border-gray-700 overflow-auto">

@@ -33,11 +33,16 @@ Op format: {target, op, ...params}
 
 canvas: create(width?,height?,bg?), get_state, screenshot, clear
 layer: create(name), delete(id), visibility(id,visible), opacity(id,val), lock(id,locked)
-shape: rect(x,y,w,h,fill?,stroke?,radius?), ellipse(x,y,w,h,fill?,stroke?)
-text: create(x,y,content,fontSize?,fontWeight?,fill?,shadow?), update(id,content?,fontSize?,fill?)
+shape: rect(x,y,w,h,fill?,stroke?,strokeWidth?,radius?,boxShadow?), ellipse(x,y,w,h,fill?,stroke?,strokeWidth?,boxShadow?)
+  fill: color string OR gradient {type:'linear',angle,stops:[{color,position}...]} OR {type:'radial',cx,cy,stops:[{color,position}...]}
+  boxShadow: {x,y,blur,spread,color,inset?}
+text: create(x,y,content,fontSize?,fontWeight?,fontFamily?,fill?,shadow?,align?,lineHeight?), update(id,content?,fontSize?,fill?)
+  shadow: {x,y,blur,color}
+  align: 'left'|'center'|'right'
 element: transform(id,x?,y?,w?,h?,rotation?), style(id,fill?,stroke?,opacity?), delete(id), duplicate(id)
-image: add(path,x?,y?,w?,h?)
-export: png
+image: add(path,x?,y?,w?,h?) - if only w OR h provided, aspect ratio preserved
+export: png, canvas (canvas exports at full resolution without UI)
+project: save(filePath?), load(filePath?) - save/load project JSON
 
 Returns: [{success,data?,error?}] per op`,
         inputSchema: {
