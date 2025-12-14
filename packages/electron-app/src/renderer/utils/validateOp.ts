@@ -22,12 +22,21 @@ const VALID_OPS: Record<string, string[]> = {
 };
 
 const REQUIRED_PARAMS: Record<string, Record<string, string[]>> = {
-  layer: { create: ['name'] },
+  layer: {
+    create: ['name'],
+    delete: ['id'],
+    visibility: ['id', 'visible'],
+    opacity: ['id', 'opacity'],
+    lock: ['id', 'locked']
+  },
   shape: {
     rect: ['x', 'y'],
     ellipse: ['x', 'y'],
   },
-  text: { create: ['x', 'y', 'content'] },
+  text: {
+    create: ['x', 'y', 'content'],
+    update: ['id']
+  },
   element: {
     transform: ['id'],
     style: ['id'],
