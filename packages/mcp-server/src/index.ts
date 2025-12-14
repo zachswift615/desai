@@ -80,10 +80,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     };
   }
 
+  // Validate ops array
+  const ops = (args as any)?.ops;
+  if (!Array.isArray(ops) || ops.length === 0) {
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'ops must be non-empty array' }) }],
+    };
+  }
+
   // Forward to batch:execute
   const message: IpcMessage = {
     type: 'batch:execute',
-    payload: { ops: (args as any).ops },
+    payload: { ops },
   };
 
   try {
