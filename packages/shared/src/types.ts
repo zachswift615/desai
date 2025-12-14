@@ -180,8 +180,29 @@ export type IpcMessage =
   | { type: 'export:png'; payload: { scale?: number } }
   | { type: 'export:svg'; payload: null }
   | { type: 'project:save'; payload: { filePath: string } }
-  | { type: 'project:load'; payload: { filePath: string } };
+  | { type: 'project:load'; payload: { filePath: string } }
+  | { type: 'batch:execute'; payload: { ops: DesaiOp[] } };
 
 export type IpcResponse<T = unknown> =
   | { success: true; data: T }
   | { success: false; error: string };
+
+// Unified MCP operation type
+export interface DesaiOp {
+  target: 'canvas' | 'layer' | 'shape' | 'text' | 'element' | 'image' | 'export';
+  op: string;
+  [key: string]: unknown;
+}
+
+// Batch execution response
+export type BatchResult =
+  | {
+      success: true;
+      data: IpcResponse[];
+    }
+  | {
+      success: false;
+      error: string;
+      failedOp: DesaiOp;
+      completedOps: number;
+    };
