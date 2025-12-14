@@ -123,6 +123,21 @@ ipcMain.handle('export-png', async () => {
   return result.filePath;
 });
 
+// IPC handler for loading an image from a file path (for MCP)
+ipcMain.handle('load-image-from-path', async (_event, filePath: string) => {
+  if (!fs.existsSync(filePath)) {
+    return { error: `File not found: ${filePath}` };
+  }
+
+  const imageBuffer = fs.readFileSync(filePath);
+  const ext = path.extname(filePath).toLowerCase().slice(1);
+  const mimeType = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+  const base64 = imageBuffer.toString('base64');
+  const dataUrl = `data:${mimeType};base64,${base64}`;
+
+  return { dataUrl, fileName: path.basename(filePath) };
+});
+
 // Handle MCP responses from renderer
 ipcMain.on('mcp-response', (_event, { requestId, response }) => {
   handleRendererResponse(requestId, response);

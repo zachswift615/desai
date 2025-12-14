@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
 import { useProjectStore } from '../store';
 import { generateId } from '../utils/id';
-import type { IpcMessage, IpcResponse, RectElement, TextElement, EllipseElement } from '@desai/shared';
+import type { IpcMessage, IpcResponse, RectElement, TextElement, EllipseElement, ImageElement } from '@desai/shared';
 
 declare global {
   interface Window {
     electronAPI: {
       captureScreenshot: () => Promise<string>;
       selectImage: () => Promise<{ dataUrl: string; fileName: string } | null>;
+      loadImageFromPath: (filePath: string) => Promise<{ dataUrl: string; fileName: string } | { error: string }>;
       exportPng: () => Promise<string | null>;
       onMcpCommand: (callback: (data: { requestId: string; message: IpcMessage }) => void) => () => void;
       sendMcpResponse: (requestId: string, response: IpcResponse) => void;
@@ -27,9 +28,29 @@ export function useMcpHandler() {
 
       try {
         switch (message.type) {
-          case 'canvas:get-state':
-            response = { success: true, data: getState() };
+          case 'canvas:get-state': {
+            // Get state but strip out base64 image data to save context
+            const state = getState();
+            const cleanState = {
+              ...state,
+              project: {
+                ...state.project,
+                layers: state.project.layers.map((layer) => ({
+                  ...layer,
+                  elements: layer.elements.map((el) => {
+                    if (el.type === 'image') {
+                      // Replace base64 src with sourcePath for MCP response
+                      const { src, ...rest } = el as any;
+                      return { ...rest, src: rest.sourcePath || '[embedded image]' };
+                    }
+                    return el;
+                  }),
+                })),
+              },
+            };
+            response = { success: true, data: cleanState };
             break;
+          }
 
           case 'canvas:screenshot':
             const screenshotPath = await window.electronAPI.captureScreenshot();
@@ -125,6 +146,58 @@ export function useMcpHandler() {
             };
             addElement(activeLayer.id, text);
             response = { success: true, data: { elementId: text.id } };
+            break;
+          }
+
+          case 'image:import': {
+            const activeLayer = project.layers.find((l) => !l.locked);
+            if (!activeLayer) {
+              response = { success: false, error: 'No unlocked layer available' };
+              break;
+            }
+
+            // Load image via IPC (main process reads file)
+            const filePath = message.payload.src;
+            const loadResult = await window.electronAPI.loadImageFromPath(filePath);
+
+            if ('error' in loadResult) {
+              response = { success: false, error: loadResult.error };
+              break;
+            }
+
+            const { dataUrl } = loadResult;
+
+            // Get natural dimensions using Image
+            const img = new window.Image();
+            const dimensionsPromise = new Promise<{ width: number; height: number }>((resolve) => {
+              img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+              img.onerror = () => resolve({ width: 200, height: 200 }); // fallback
+            });
+            img.src = dataUrl;
+            const { width: naturalWidth, height: naturalHeight } = await dimensionsPromise;
+
+            const imageElement: ImageElement = {
+              id: generateId(),
+              type: 'image',
+              x: message.payload.x ?? 100,
+              y: message.payload.y ?? 100,
+              width: message.payload.width ?? naturalWidth,
+              height: message.payload.height ?? naturalHeight,
+              rotation: 0,
+              opacity: 100,
+              src: dataUrl,
+              sourcePath: filePath, // Store original path for MCP state reporting
+              naturalWidth,
+              naturalHeight,
+              filters: {
+                brightness: 100,
+                contrast: 100,
+                saturation: 100,
+                blur: 0,
+              },
+            };
+            addElement(activeLayer.id, imageElement);
+            response = { success: true, data: { elementId: imageElement.id, naturalWidth, naturalHeight } };
             break;
           }
 

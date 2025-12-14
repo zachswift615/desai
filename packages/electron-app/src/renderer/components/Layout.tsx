@@ -1,4 +1,5 @@
 import React from 'react';
+import { ZoomControls } from './ZoomControls';
 
 interface LayoutProps {
   toolbar: React.ReactNode;
@@ -10,9 +11,10 @@ interface LayoutProps {
 export function Layout({ toolbar, canvas, layers, properties }: LayoutProps) {
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-900 text-gray-100">
-      {/* Menu bar placeholder */}
-      <div className="h-8 bg-gray-800 border-b border-gray-700 flex items-center px-4 text-sm">
+      {/* Menu bar with zoom controls */}
+      <div className="h-8 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 text-sm">
         <span className="font-semibold">Desai</span>
+        <ZoomControls />
       </div>
 
       <div className="flex-1 flex overflow-hidden">

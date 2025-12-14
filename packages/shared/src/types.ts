@@ -102,6 +102,7 @@ export interface TextElement extends BaseElement {
 export interface ImageElement extends BaseElement {
   type: 'image';
   src: string;
+  sourcePath?: string; // Original file path (for MCP state reporting)
   naturalWidth: number;
   naturalHeight: number;
   filters: ImageFilters;

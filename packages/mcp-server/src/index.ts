@@ -277,6 +277,23 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
 
+      // Image
+      {
+        name: 'desai_image_add',
+        description: 'Add an image to the canvas from a file path',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            path: { type: 'string', description: 'Absolute file path to the image (png, jpg, gif, svg, webp)' },
+            x: { type: 'number', description: 'X position', default: 100 },
+            y: { type: 'number', description: 'Y position', default: 100 },
+            width: { type: 'number', description: 'Width (optional, uses natural width if not specified)' },
+            height: { type: 'number', description: 'Height (optional, uses natural height if not specified)' },
+          },
+          required: ['path'],
+        },
+      },
+
       // Export
       {
         name: 'desai_export_png',
@@ -406,6 +423,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case 'desai_export_png':
       message = { type: 'export:png', payload: {} };
+      break;
+
+    case 'desai_image_add':
+      message = {
+        type: 'image:import',
+        payload: {
+          src: (args as any).path,
+          x: (args as any).x ?? 100,
+          y: (args as any).y ?? 100,
+          width: (args as any).width,
+          height: (args as any).height,
+        },
+      };
       break;
 
     default:

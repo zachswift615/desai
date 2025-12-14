@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 contextBridge.exposeInMainWorld('electronAPI', {
   captureScreenshot: () => ipcRenderer.invoke('capture-screenshot'),
   selectImage: () => ipcRenderer.invoke('select-image'),
+  loadImageFromPath: (filePath: string) => ipcRenderer.invoke('load-image-from-path', filePath),
   exportPng: () => ipcRenderer.invoke('export-png'),
   onMcpCommand: (callback: (data: { requestId: string; message: unknown }) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data as { requestId: string; message: unknown });
